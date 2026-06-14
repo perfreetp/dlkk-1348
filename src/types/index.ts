@@ -59,7 +59,7 @@ export interface Room {
   topicStartTime?: number;
   voteOptions?: string[];
   voteResults?: Record<string, number>;
-  readPosition?: number;
+  lastReadMsgId?: string;
 }
 
 export interface Topic {

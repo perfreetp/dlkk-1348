@@ -16,7 +16,7 @@ interface PersistedState {
   chatSessions: ChatSession[];
   messagesMap: Record<string, Message[]>;
   roomMessagesMap: Record<string, Message[]>;
-  roomReadPositions: Record<string, number>;
+  roomReadPositions: Record<string, string>;
   reports: ReportItem[];
 }
 
@@ -80,8 +80,8 @@ interface AppState extends PersistedState {
   setRoomPhase: (roomId: string, phase: Room['phase']) => void;
   getRoomMessages: (roomId: string) => Message[];
   appendRoomMessage: (roomId: string, msg: Message) => void;
-  setRoomReadPosition: (roomId: string, index: number) => void;
-  getRoomReadPosition: (roomId: string) => number;
+  setRoomReadPosition: (roomId: string, msgId: string) => void;
+  getRoomReadPosition: (roomId: string) => string;
 
   addChatSession: (session: ChatSession) => void;
   appendMessage: (targetId: string, msg: Message) => void;
@@ -322,18 +322,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       const entries = Object.entries(results).sort((a, b) => b[1] - a[1]);
       winner = entries[0]?.[0] || '';
       maxVotes = entries[0]?.[1] || 0;
-      const systemMsg: Message = {
-        id: `vote-end-${Date.now()}`,
-        roomId,
-        senderId: 'system',
-        senderName: '系统',
-        senderAvatar: '',
-        content: `投票结束，下一话题：${winner}`,
-        timestamp: new Date().toLocaleTimeString().slice(0, 5),
-        isAI: false,
-        type: 'system'
-      };
-      const newRoomMsgs = [...(state.roomMessagesMap[roomId] || []), systemMsg];
       return {
         rooms: state.rooms.map((r) =>
           r.id === roomId
@@ -346,8 +334,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 voteResults: undefined
               }
             : r
-        ),
-        roomMessagesMap: { ...state.roomMessagesMap, [roomId]: newRoomMsgs }
+        )
       };
     });
     get().persist();
@@ -374,15 +361,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  setRoomReadPosition: (roomId, index) => {
+  setRoomReadPosition: (roomId, msgId) => {
     set((state) => ({
-      roomReadPositions: { ...state.roomReadPositions, [roomId]: index }
+      roomReadPositions: { ...state.roomReadPositions, [roomId]: msgId }
     }));
     get().persist();
   },
 
   getRoomReadPosition: (roomId) => {
-    return get().roomReadPositions[roomId] || 0;
+    return get().roomReadPositions[roomId] || '';
   },
 
   addChatSession: (session) => {

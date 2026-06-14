@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, Input, ScrollView, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
@@ -140,39 +140,59 @@ const RoomPage: React.FC = () => {
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [newMsgBadge, setNewMsgBadge] = useState(0);
   const [countdown, setCountdown] = useState<number>(0);
+  const [scrollIntoViewId, setScrollIntoViewId] = useState('');
   const [newRoom, setNewRoom] = useState({
     name: '',
     description: '',
     frequency: 'medium' as 'low' | 'medium' | 'high',
     topic: '人工智能的未来'
   });
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scrollRef = useRef<any>(null);
   const isAtBottomRef = useRef(true);
-  const msgCountRef = useRef(0);
+  const roomRef = useRef<Room | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+  const hasRestoredRef = useRef(false);
 
-  const clearTimer = () => {
+  useEffect(() => {
+    roomRef.current = selectedRoom;
+  }, [selectedRoom]);
+
+  useEffect(() => {
+    messagesRef.current = roomMessages;
+  }, [roomMessages]);
+
+  const clearTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  };
+  }, []);
 
-  const clearCountdown = () => {
+  const clearCountdown = useCallback(() => {
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
       countdownRef.current = null;
     }
-  };
+  }, []);
 
-  const getRandomReply = (char: Character, topic?: string): string => {
+  const clearVoteTimer = useCallback(() => {
+    if (voteTimerRef.current) {
+      clearInterval(voteTimerRef.current);
+      voteTimerRef.current = null;
+    }
+  }, []);
+
+  const getRandomReply = (topic?: string): string => {
     const topicData = TOPIC_REPLIES.find((t) => t.topic === topic);
     const pool = topicData?.replies.default || defaultReplies;
     return pool[Math.floor(Math.random() * pool.length)];
   };
 
-  const startCountdown = (durationMin: number) => {
+  const startCountdown = useCallback((durationMin: number) => {
     setCountdown(durationMin * 60);
     clearCountdown();
     countdownRef.current = setInterval(() => {
@@ -184,7 +204,7 @@ const RoomPage: React.FC = () => {
         return prev - 1;
       });
     }, 1000);
-  };
+  }, [clearCountdown]);
 
   const formatCountdown = (sec: number): string => {
     const m = Math.floor(sec / 60);
@@ -208,52 +228,107 @@ const RoomPage: React.FC = () => {
     }
   };
 
-  const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  const scrollToBottom = useCallback(() => {
+    const msgs = messagesRef.current;
+    if (msgs.length > 0) {
+      const lastId = `rmsg-${msgs[msgs.length - 1].id}`;
+      setScrollIntoViewId(lastId);
       setNewMsgBadge(0);
+      isAtBottomRef.current = true;
+      setTimeout(() => setScrollIntoViewId(''), 300);
     }
-  };
+  }, []);
+
+  const saveReadPosition = useCallback(() => {
+    const room = roomRef.current;
+    if (!room || !isSpectator) return;
+    const msgs = messagesRef.current;
+    if (msgs.length === 0) return;
+
+    if (isAtBottomRef.current) {
+      const lastMsg = msgs[msgs.length - 1];
+      setRoomReadPosition(room.id, lastMsg.id);
+    } else {
+      const readCount = msgs.length - newMsgBadge;
+      const safeIdx = Math.max(0, Math.min(readCount - 1, msgs.length - 1));
+      const readMsg = msgs[safeIdx];
+      if (readMsg) {
+        setRoomReadPosition(room.id, readMsg.id);
+      }
+    }
+  }, [isSpectator, newMsgBadge, setRoomReadPosition]);
+
+  const restoreReadPosition = useCallback((roomId: string, msgs: Message[]) => {
+    const savedId = getRoomReadPosition(roomId);
+    if (!savedId) {
+      hasRestoredRef.current = true;
+      return false;
+    }
+    const idx = msgs.findIndex((m) => m.id === savedId);
+    if (idx === -1) {
+      hasRestoredRef.current = true;
+      return false;
+    }
+    const targetId = `rmsg-${msgs[idx].id}`;
+    setTimeout(() => {
+      setScrollIntoViewId(targetId);
+      hasRestoredRef.current = true;
+      setTimeout(() => setScrollIntoViewId(''), 500);
+    }, 100);
+    return true;
+  }, [getRoomReadPosition]);
 
   useEffect(() => {
     clearTimer();
-    if (selectedRoom && selectedRoom.status === 'active' && selectedRoom.phase !== 'voting') {
-      const interval = FREQ_INTERVAL[frequency];
-      timerRef.current = setInterval(() => {
-        const randomChar =
-          selectedRoom.participants[
-            Math.floor(Math.random() * selectedRoom.participants.length)
-          ] || mockCharacters[Math.floor(Math.random() * mockCharacters.length)];
-        const isHighlight = Math.random() < 0.15;
-        const newMsg: Message = {
-          id: `room-msg-${Date.now()}-${Math.random()}`,
-          roomId: selectedRoom.id,
-          senderId: randomChar.id,
-          senderName: randomChar.name,
-          senderAvatar: randomChar.avatar,
-          content: getRandomReply(randomChar, selectedRoom.currentTopic),
-          timestamp: new Date().toLocaleTimeString().slice(0, 5),
-          isAI: true,
-          type: 'text',
-          isHighlighted: isHighlight
-        };
-        appendRoomMessage(selectedRoom.id, newMsg);
-        setRoomMessages((prev) => {
-          const next = [...prev, newMsg];
-          return next.slice(-100);
-        });
-        if (!isAtBottomRef.current) {
-          setNewMsgBadge((prev) => prev + 1);
-        }
-        if (isHighlight) {
-          const idx = roomMessages.length;
-          setHighlightIndex(idx);
-          setTimeout(() => setHighlightIndex(-1), 3000);
-        }
-      }, interval);
-    }
+    const room = roomRef.current;
+    if (!room) return;
+    if (room.status !== 'active' || room.phase === 'voting') return;
+
+    const interval = FREQ_INTERVAL[frequency];
+    timerRef.current = setInterval(() => {
+      const currentRoom = roomRef.current;
+      if (!currentRoom || currentRoom.status !== 'active' || currentRoom.phase === 'voting') {
+        return;
+      }
+
+      const randomChar =
+        currentRoom.participants[
+          Math.floor(Math.random() * currentRoom.participants.length)
+        ] || mockCharacters[Math.floor(Math.random() * mockCharacters.length)];
+
+      const isHighlight = Math.random() < 0.12;
+      const newMsg: Message = {
+        id: `room-msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        roomId: currentRoom.id,
+        senderId: randomChar.id,
+        senderName: randomChar.name,
+        senderAvatar: randomChar.avatar,
+        content: getRandomReply(currentRoom.currentTopic),
+        timestamp: new Date().toLocaleTimeString().slice(0, 5),
+        isAI: true,
+        type: 'text',
+        isHighlighted: isHighlight
+      };
+
+      appendRoomMessage(currentRoom.id, newMsg);
+      setRoomMessages((prev) => {
+        const next = [...prev, newMsg];
+        messagesRef.current = next.slice(-120);
+        return messagesRef.current;
+      });
+
+      if (!isAtBottomRef.current) {
+        setNewMsgBadge((prev) => prev + 1);
+      } else {
+        setTimeout(() => {
+          setScrollIntoViewId(`rmsg-${newMsg.id}`);
+          setTimeout(() => setScrollIntoViewId(''), 200);
+        }, 10);
+      }
+    }, interval);
+
     return () => clearTimer();
-  }, [selectedRoom, frequency]);
+  }, [selectedRoom?.id, selectedRoom?.status, selectedRoom?.phase, frequency, clearTimer, appendRoomMessage]);
 
   useEffect(() => {
     if (selectedRoom && selectedRoom.topicDuration && selectedRoom.phase === 'discussing') {
@@ -264,7 +339,7 @@ const RoomPage: React.FC = () => {
       }
     }
     return () => clearCountdown();
-  }, [selectedRoom?.id, selectedRoom?.phase, selectedRoom?.topicDuration]);
+  }, [selectedRoom?.id, selectedRoom?.phase, selectedRoom?.topicDuration, selectedRoom?.topicStartTime, startCountdown, clearCountdown]);
 
   const filteredRooms = rooms.filter((room) => {
     if (activeFilter === '全部') return true;
@@ -274,83 +349,75 @@ const RoomPage: React.FC = () => {
   });
 
   const handleRoomClick = (room: Room) => {
+    hasRestoredRef.current = false;
     setSelectedRoom(room);
     setFrequency(room.autoFrequency);
     const stored = getRoomMessages(room.id);
     const initMessages: Message[] =
       stored.length > 0
         ? stored
-        : Array.from({ length: 6 }).map((_, i) => {
-            const c =
-              room.participants[i % room.participants.length] ||
-              mockCharacters[i % mockCharacters.length];
-            return {
-              id: `init-${room.id}-${i}`,
-              roomId: room.id,
-              senderId: c.id,
-              senderName: c.name,
-              senderAvatar: c.avatar,
-              content: getRandomReply(c, room.currentTopic),
-              timestamp: new Date(Date.now() - (6 - i) * 60000).toLocaleTimeString().slice(0, 5),
-              isAI: true,
-              type: 'text'
-            } as Message;
-          });
-    if (room.currentTopic) {
-      const topicMsg: Message = {
-        id: `topic-${room.id}`,
-        roomId: room.id,
-        senderId: 'system',
-        senderName: '系统',
-        senderAvatar: '',
-        content: `当前话题：${room.currentTopic}`,
-        timestamp: '—',
-        isAI: false,
-        type: 'topic'
-      };
-      if (stored.length === 0) {
-        initMessages.unshift(topicMsg);
-      }
-    }
+        : (() => {
+            const msgs: Message[] = [];
+            if (room.currentTopic) {
+              msgs.push({
+                id: `topic-${room.id}`,
+                roomId: room.id,
+                senderId: 'system',
+                senderName: '系统',
+                senderAvatar: '',
+                content: `当前话题：${room.currentTopic}`,
+                timestamp: '—',
+                isAI: false,
+                type: 'topic'
+              });
+            }
+            for (let i = 0; i < 6; i++) {
+              const c =
+                room.participants[i % room.participants.length] ||
+                mockCharacters[i % mockCharacters.length];
+              msgs.push({
+                id: `init-${room.id}-${i}`,
+                roomId: room.id,
+                senderId: c.id,
+                senderName: c.name,
+                senderAvatar: c.avatar,
+                content: getRandomReply(room.currentTopic),
+                timestamp: new Date(Date.now() - (6 - i) * 60000).toLocaleTimeString().slice(0, 5),
+                isAI: true,
+                type: 'text'
+              } as Message);
+            }
+            return msgs;
+          })();
+
     setRoomMessages(initMessages);
-    msgCountRef.current = initMessages.length;
+    messagesRef.current = initMessages;
     setIsSpectator(false);
     setNewMsgBadge(0);
 
-    const savedPos = getRoomReadPosition(room.id);
-    if (savedPos > 0 && savedPos < initMessages.length - 1) {
-      setTimeout(() => {
-        if (scrollRef.current) {
-          const target = initMessages[Math.max(0, savedPos - 2)];
-          if (target) {
-            const el = document.getElementById(`rmsg-${savedPos - 2}`);
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }
-        }
-      }, 200);
-    }
+    restoreReadPosition(room.id, initMessages);
   };
 
   const handleBack = () => {
-    if (selectedRoom && isSpectator) {
-      setRoomReadPosition(selectedRoom.id, Math.max(0, roomMessages.length - newMsgBadge - 3));
-    }
+    saveReadPosition();
     clearTimer();
     clearCountdown();
+    clearVoteTimer();
     setSelectedRoom(null);
     setRoomMessages([]);
+    messagesRef.current = [];
     setIsSpectator(false);
     setShowTopicPicker(false);
     setShowDurationPicker(false);
     setNewMsgBadge(0);
+    setScrollIntoViewId('');
+    hasRestoredRef.current = false;
   };
 
   const handleJoinRoom = () => {
     setIsSpectator(true);
     Taro.showToast({ title: '已加入旁听', icon: 'success' });
-    setTimeout(scrollToBottom, 100);
+    setTimeout(scrollToBottom, 200);
   };
 
   const handleFrequencyChange = (freq: 'low' | 'medium' | 'high') => {
@@ -375,7 +442,7 @@ const RoomPage: React.FC = () => {
   const handlePickTopic = (topic: string) => {
     if (!selectedRoom) return;
     setRoomCurrentTopic(selectedRoom.id, topic);
-    const updated = { ...selectedRoom, currentTopic: topic };
+    const updated = { ...selectedRoom, currentTopic: topic, topicStartTime: Date.now() };
     setSelectedRoom(updated);
     const systemMsg: Message = {
       id: `topic-change-${Date.now()}`,
@@ -383,16 +450,23 @@ const RoomPage: React.FC = () => {
       senderId: 'system',
       senderName: '系统',
       senderAvatar: '',
-      content: `话题已切换为：${topic}`,
+      content: `💡 话题已切换为：${topic}`,
       timestamp: new Date().toLocaleTimeString().slice(0, 5),
       isAI: false,
       type: 'topic'
     };
-    setRoomMessages((prev) => [...prev, systemMsg]);
+    setRoomMessages((prev) => {
+      const next = [...prev, systemMsg];
+      messagesRef.current = next;
+      return next;
+    });
     appendRoomMessage(selectedRoom.id, systemMsg);
     setShowTopicPicker(false);
     if (selectedRoom.topicDuration) {
       startCountdown(selectedRoom.topicDuration);
+    }
+    if (isAtBottomRef.current) {
+      setTimeout(scrollToBottom, 50);
     }
   };
 
@@ -410,6 +484,7 @@ const RoomPage: React.FC = () => {
     const options = TOPIC_REPLIES.filter((t) => t.topic !== selectedRoom.currentTopic)
       .slice(0, 4)
       .map((t) => t.topic);
+
     startVote(selectedRoom.id, options);
     const updated = {
       ...selectedRoom,
@@ -418,6 +493,8 @@ const RoomPage: React.FC = () => {
       voteResults: options.reduce((acc, o) => ({ ...acc, [o]: 0 }), {})
     };
     setSelectedRoom(updated);
+    setRoomPhase(selectedRoom.id, 'voting');
+
     const voteMsg: Message = {
       id: `vote-start-${Date.now()}`,
       roomId: selectedRoom.id,
@@ -429,25 +506,28 @@ const RoomPage: React.FC = () => {
       isAI: false,
       type: 'vote'
     };
-    setRoomMessages((prev) => [...prev, voteMsg]);
+    setRoomMessages((prev) => {
+      const next = [...prev, voteMsg];
+      messagesRef.current = next;
+      return next;
+    });
     appendRoomMessage(selectedRoom.id, voteMsg);
-    setRoomPhase(selectedRoom.id, 'voting');
 
-    setTimeout(() => simulateVoting(updated), 800);
-  };
+    if (isAtBottomRef.current) {
+      setTimeout(scrollToBottom, 50);
+    }
 
-  const simulateVoting = (room: Room) => {
-    if (!room.voteOptions) return;
+    clearVoteTimer();
     let count = 0;
-    const total = room.participants.length * 2;
-    const voteTimer = setInterval(() => {
+    const total = updated.participants.length * 2;
+    voteTimerRef.current = setInterval(() => {
       if (count >= total) {
-        clearInterval(voteTimer);
-        setTimeout(() => handleEndVote(), 500);
+        clearVoteTimer();
+        setTimeout(() => handleEndVote(), 800);
         return;
       }
-      const option = room.voteOptions![Math.floor(Math.random() * room.voteOptions!.length)];
-      castVote(room.id, option);
+      const option = options[Math.floor(Math.random() * options.length)];
+      castVote(updated.id, option);
       setSelectedRoom((prev) => {
         if (!prev) return prev;
         const results = { ...prev.voteResults };
@@ -459,29 +539,76 @@ const RoomPage: React.FC = () => {
   };
 
   const handleEndVote = () => {
-    if (!selectedRoom) return;
-    const { winner, maxVotes } = endVote(selectedRoom.id);
-    if (winner) {
-      const systemMsg: Message = {
-        id: `vote-end-${Date.now()}`,
-        roomId: selectedRoom.id,
+    clearVoteTimer();
+    const room = roomRef.current;
+    if (!room) return;
+
+    const { winner, maxVotes } = endVote(room.id);
+    if (!winner) return;
+
+    const resultMsg: Message = {
+      id: `vote-result-${Date.now()}`,
+      roomId: room.id,
+      senderId: 'system',
+      senderName: '系统',
+      senderAvatar: '',
+      content: `🎉 投票结束！「${winner}」以 ${maxVotes} 票胜出`,
+      timestamp: new Date().toLocaleTimeString().slice(0, 5),
+      isAI: false,
+      type: 'vote'
+    };
+    setRoomMessages((prev) => {
+      const next = [...prev, resultMsg];
+      messagesRef.current = next;
+      return next;
+    });
+    appendRoomMessage(room.id, resultMsg);
+
+    setTimeout(() => {
+      const currentRoom = roomRef.current;
+      if (!currentRoom) return;
+
+      setRoomCurrentTopic(currentRoom.id, winner);
+      setRoomPhase(currentRoom.id, 'discussing');
+      setSelectedRoom((prev) =>
+        prev
+          ? {
+              ...prev,
+              phase: 'discussing',
+              currentTopic: winner,
+              topicStartTime: Date.now(),
+              voteOptions: undefined,
+              voteResults: undefined
+            }
+          : prev
+      );
+
+      const topicMsg: Message = {
+        id: `topic-switch-${Date.now()}`,
+        roomId: currentRoom.id,
         senderId: 'system',
         senderName: '系统',
         senderAvatar: '',
-        content: `🎉 投票结束！「${winner}」以 ${maxVotes} 票胜出，话题切换中...`,
+        content: `💡 新话题：${winner}`,
         timestamp: new Date().toLocaleTimeString().slice(0, 5),
         isAI: false,
         type: 'topic'
       };
-      setRoomMessages((prev) => [...prev, systemMsg]);
-      appendRoomMessage(selectedRoom.id, systemMsg);
+      setRoomMessages((prev) => {
+        const next = [...prev, topicMsg];
+        messagesRef.current = next;
+        return next;
+      });
+      appendRoomMessage(currentRoom.id, topicMsg);
 
-      setTimeout(() => {
-        handlePickTopic(winner);
-        setRoomPhase(selectedRoom!.id, 'discussing');
-        setSelectedRoom((prev) => (prev ? { ...prev, phase: 'discussing' } : prev));
-      }, 1200);
-    }
+      if (currentRoom.topicDuration) {
+        startCountdown(currentRoom.topicDuration);
+      }
+
+      if (isAtBottomRef.current) {
+        setTimeout(scrollToBottom, 50);
+      }
+    }, 1200);
   };
 
   const handleCreateRoom = () => {
@@ -629,15 +756,16 @@ const RoomPage: React.FC = () => {
           scrollY
           ref={scrollRef}
           onScroll={handleScroll}
-          scrollIntoView={isAtBottomRef.current ? `rmsg-${roomMessages.length - 1}` : undefined}
+          scrollIntoView={scrollIntoViewId || undefined}
+          scrollWithAnimation
         >
           {selectedRoom.status === 'paused' && (
             <View className={styles.pausedHint}>
               <Text>⏸️ 房间已暂停，AI 角色暂时停止发言</Text>
             </View>
           )}
-          {roomMessages.map((msg, idx) => (
-            <View key={msg.id} id={`rmsg-${idx}`} className={styles.msgWrapper}>
+          {roomMessages.map((msg) => (
+            <View key={msg.id} id={`rmsg-${msg.id}`} className={styles.msgWrapper}>
               {msg.type === 'topic' ? (
                 <View className={styles.topicMsg}>
                   <Text>{msg.content}</Text>
