@@ -1,51 +1,224 @@
 import { create } from 'zustand';
-import { Character, Message, ChatSession, Room } from '@/types';
-import { mockMyCharacter } from '@/data/characters';
+import { Character, Message, ChatSession, Room, ReportItem } from '@/types';
+import { mockMyCharacter, mockCharacters } from '@/data/characters';
+import { mockRooms } from '@/data/rooms';
+import { mockChatSessions, mockMessages, mockCollectedMessages } from '@/data/messages';
+import Taro from '@tarojs/taro';
 
-interface AppState {
+const STORAGE_KEY = 'ai_chat_app_state_v1';
+
+interface PersistedState {
   myCharacter: Character;
   collectedMessages: Message[];
   blockedUsers: string[];
   forbiddenWords: string[];
+  rooms: Room[];
+  chatSessions: ChatSession[];
+  messagesMap: Record<string, Message[]>;
+  reports: ReportItem[];
+}
+
+const loadPersisted = (): Partial<PersistedState> => {
+  try {
+    const raw = Taro.getStorageSync(STORAGE_KEY);
+    if (raw) {
+      return JSON.parse(raw) as Partial<PersistedState>;
+    }
+  } catch (e) {
+    console.warn('load state failed', e);
+  }
+  return {};
+};
+
+const persisted = loadPersisted();
+
+const buildInitialMessagesMap = (): Record<string, Message[]> => {
+  const map: Record<string, Message[]> = {};
+  mockChatSessions.forEach((s) => {
+    map[s.targetId] = mockMessages.map((m) => ({
+      ...m,
+      id: `${m.id}-${s.targetId}`,
+      senderId: m.isAI ? s.targetId : 'me',
+      senderName: m.isAI ? s.targetName : '我',
+      senderAvatar: m.isAI ? s.targetAvatar : mockMyCharacter.avatar
+    }));
+  });
+  return map;
+};
+
+interface AppState extends PersistedState {
   currentChatSession: ChatSession | null;
   currentRoom: Room | null;
   setMyCharacter: (char: Character) => void;
   toggleCollectMessage: (msg: Message) => void;
   addForbiddenWord: (word: string) => void;
   removeForbiddenWord: (word: string) => void;
-  blockUser: (userId: string) => void;
+  blockUser: (userId: string, userName?: string, userAvatar?: string) => void;
   unblockUser: (userId: string) => void;
+  addReport: (report: Omit<ReportItem, 'id' | 'createdAt'>) => void;
   setCurrentChatSession: (session: ChatSession | null) => void;
   setCurrentRoom: (room: Room | null) => void;
+  addRoom: (room: Room) => void;
+  addChatSession: (session: ChatSession) => void;
+  appendMessage: (targetId: string, msg: Message) => void;
+  getMessagesForTarget: (targetId: string) => Message[];
+  updateRoomFrequency: (roomId: string, freq: Room['autoFrequency']) => void;
+  persist: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  myCharacter: mockMyCharacter,
-  collectedMessages: [],
-  blockedUsers: [],
-  forbiddenWords: ['广告', '违规词'],
+export const useAppStore = create<AppState>((set, get) => ({
+  myCharacter: persisted.myCharacter || mockMyCharacter,
+  collectedMessages: persisted.collectedMessages || mockCollectedMessages,
+  blockedUsers: persisted.blockedUsers || [],
+  forbiddenWords: persisted.forbiddenWords || ['广告', '违规词'],
+  rooms: persisted.rooms || mockRooms,
+  chatSessions: persisted.chatSessions || mockChatSessions,
+  messagesMap: persisted.messagesMap || buildInitialMessagesMap(),
+  reports: persisted.reports || [],
   currentChatSession: null,
   currentRoom: null,
-  setMyCharacter: (char) => set({ myCharacter: char }),
-  toggleCollectMessage: (msg) => set((state) => {
-    const exists = state.collectedMessages.find(m => m.id === msg.id);
-    if (exists) {
-      return { collectedMessages: state.collectedMessages.filter(m => m.id !== msg.id) };
+
+  persist: () => {
+    try {
+      const {
+        myCharacter,
+        collectedMessages,
+        blockedUsers,
+        forbiddenWords,
+        rooms,
+        chatSessions,
+        messagesMap,
+        reports
+      } = get();
+      Taro.setStorageSync(
+        STORAGE_KEY,
+        JSON.stringify({
+          myCharacter,
+          collectedMessages,
+          blockedUsers,
+          forbiddenWords,
+          rooms,
+          chatSessions,
+          messagesMap,
+          reports
+        })
+      );
+    } catch (e) {
+      console.warn('persist failed', e);
     }
-    return { collectedMessages: [...state.collectedMessages, { ...msg, isCollected: true }] };
-  }),
-  addForbiddenWord: (word) => set((state) => ({
-    forbiddenWords: [...state.forbiddenWords, word]
-  })),
-  removeForbiddenWord: (word) => set((state) => ({
-    forbiddenWords: state.forbiddenWords.filter(w => w !== word)
-  })),
-  blockUser: (userId) => set((state) => ({
-    blockedUsers: [...state.blockedUsers, userId]
-  })),
-  unblockUser: (userId) => set((state) => ({
-    blockedUsers: state.blockedUsers.filter(id => id !== userId)
-  })),
+  },
+
+  setMyCharacter: (char) => {
+    set({ myCharacter: char });
+    get().persist();
+  },
+
+  toggleCollectMessage: (msg) => {
+    set((state) => {
+      const exists = state.collectedMessages.find((m) => m.id === msg.id);
+      if (exists) {
+        return { collectedMessages: state.collectedMessages.filter((m) => m.id !== msg.id) };
+      }
+      return { collectedMessages: [...state.collectedMessages, { ...msg, isCollected: true }] };
+    });
+    get().persist();
+  },
+
+  addForbiddenWord: (word) => {
+    set((state) => ({ forbiddenWords: [...state.forbiddenWords, word] }));
+    get().persist();
+  },
+
+  removeForbiddenWord: (word) => {
+    set((state) => ({ forbiddenWords: state.forbiddenWords.filter((w) => w !== word) }));
+    get().persist();
+  },
+
+  blockUser: (userId) => {
+    set((state) => {
+      if (state.blockedUsers.includes(userId)) return state;
+      return { blockedUsers: [...state.blockedUsers, userId] };
+    });
+    get().persist();
+  },
+
+  unblockUser: (userId) => {
+    set((state) => ({ blockedUsers: state.blockedUsers.filter((id) => id !== userId) }));
+    get().persist();
+  },
+
+  addReport: (report) => {
+    set((state) => ({
+      reports: [
+        {
+          ...report,
+          id: `report-${Date.now()}`,
+          createdAt: new Date().toLocaleString()
+        },
+        ...state.reports
+      ]
+    }));
+    get().persist();
+  },
+
   setCurrentChatSession: (session) => set({ currentChatSession: session }),
-  setCurrentRoom: (room) => set({ currentRoom: room })
+  setCurrentRoom: (room) => set({ currentRoom: room }),
+
+  addRoom: (room) => {
+    set((state) => ({ rooms: [room, ...state.rooms] }));
+    get().persist();
+  },
+
+  updateRoomFrequency: (roomId, freq) => {
+    set((state) => ({
+      rooms: state.rooms.map((r) => (r.id === roomId ? { ...r, autoFrequency: freq } : r))
+    }));
+    get().persist();
+  },
+
+  addChatSession: (session) => {
+    set((state) => {
+      const exists = state.chatSessions.find((s) => s.targetId === session.targetId);
+      if (exists) return state;
+      const targetChar = mockCharacters.find((c) => c.id === session.targetId);
+      if (targetChar && !state.messagesMap[session.targetId]) {
+        const hello: Message = {
+          id: `hello-${session.targetId}-${Date.now()}`,
+          senderId: session.targetId,
+          senderName: session.targetName,
+          senderAvatar: session.targetAvatar,
+          content: `你好呀~ 我是${session.targetName}，很高兴认识你！`,
+          timestamp: new Date().toLocaleTimeString().slice(0, 5),
+          isAI: true,
+          type: 'text'
+        };
+        return {
+          chatSessions: [session, ...state.chatSessions],
+          messagesMap: { ...state.messagesMap, [session.targetId]: [hello] }
+        };
+      }
+      return { chatSessions: [session, ...state.chatSessions] };
+    });
+    get().persist();
+  },
+
+  appendMessage: (targetId, msg) => {
+    set((state) => {
+      const existing = state.messagesMap[targetId] || [];
+      const updatedSessions = state.chatSessions.map((s) =>
+        s.targetId === targetId
+          ? { ...s, lastMessage: msg.content, lastTime: '刚刚' }
+          : s
+      );
+      return {
+        messagesMap: { ...state.messagesMap, [targetId]: [...existing, msg] },
+        chatSessions: updatedSessions
+      };
+    });
+    get().persist();
+  },
+
+  getMessagesForTarget: (targetId) => {
+    return get().messagesMap[targetId] || [];
+  }
 }));

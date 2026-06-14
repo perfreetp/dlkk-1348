@@ -77,7 +77,9 @@ export interface ReportItem {
   id: string;
   targetId: string;
   targetName: string;
+  targetAvatar: string;
   reason: string;
+  messageContent?: string;
   createdAt: string;
 }
 

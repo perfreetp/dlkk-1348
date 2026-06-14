@@ -1,20 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Input, ScrollView, Image } from '@tarojs/components';
-import Taro from '@tarojs/taro';
+import Taro, { eventCenter } from '@tarojs/taro';
 import styles from './index.module.scss';
 import MessageItem from '@/components/MessageItem';
 import ChatBubble from '@/components/ChatBubble';
-import { mockChatSessions, mockMessages, mockCollectedMessages } from '@/data/messages';
+import { mockCollectedMessages } from '@/data/messages';
 import { ChatSession, Message } from '@/types';
 import classnames from 'classnames';
 import { useAppStore } from '@/store/appStore';
 
+const REPLIES: Record<string, string[]> = {
+  default: [
+    '收到你的消息啦~ 让我想想怎么回复你呢~',
+    '嗯嗯，我在认真听哦',
+    '这个问题很有意思，让我想想...',
+    '哈哈，你说得对！',
+    '我也这么觉得呢~'
+  ],
+  friendly: ['你说的很有道理呢~', '嗯嗯，我明白你的感受', '有什么我可以帮你的吗？'],
+  humorous: ['哈哈哈哈你太逗了！', '这个梗我接住了！(•̀ᴗ•́)و', '笑死我了，你真是个人才'],
+  formal: ['您的问题我已收到，请稍候', '根据我的分析...', '感谢您的提问'],
+  cold: ['嗯。', '知道了。', '然后呢？'],
+  cute: ['好哒好哒~', '兔兔听到啦！', '你好可爱呀~']
+};
+
 const ChatPage: React.FC = () => {
+  const {
+    chatSessions,
+    collectedMessages,
+    myCharacter,
+    getMessagesForTarget,
+    appendMessage,
+    addChatSession
+  } = useAppStore();
   const [activeTab, setActiveTab] = useState<'chats' | 'collects'>('chats');
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
-  const [messages, setMessages] = useState<Message[]>(mockMessages);
+  const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
-  const { collectedMessages, myCharacter } = useAppStore();
+  const replyingRef = useRef(false);
+
+  useEffect(() => {
+    const handler = (targetId: string) => {
+      const session = chatSessions.find((s) => s.targetId === targetId);
+      if (session) {
+        setSelectedSession(session);
+        setLocalMessages(getMessagesForTarget(targetId));
+      }
+    };
+    eventCenter.on('openChatWith', handler);
+    return () => {
+      eventCenter.off('openChatWith', handler);
+    };
+  }, [chatSessions, getMessagesForTarget]);
+
+  useEffect(() => {
+    if (selectedSession) {
+      setLocalMessages(getMessagesForTarget(selectedSession.targetId));
+    }
+  }, [selectedSession, getMessagesForTarget]);
 
   const handleSessionClick = (session: ChatSession) => {
     setSelectedSession(session);
@@ -24,8 +67,24 @@ const ChatPage: React.FC = () => {
     setSelectedSession(null);
   };
 
+  const pickReply = (): string => {
+    const tone =
+      chatSessions.find((s) => selectedSession && s.targetId === selectedSession.targetId)
+        ?.targetId === 'char-002'
+        ? 'humorous'
+        : selectedSession?.targetId === 'char-003'
+        ? 'cold'
+        : selectedSession?.targetId === 'char-004'
+        ? 'cute'
+        : selectedSession?.targetId === 'char-005'
+        ? 'formal'
+        : 'default';
+    const pool = REPLIES[tone] || REPLIES.default;
+    return pool[Math.floor(Math.random() * pool.length)];
+  };
+
   const handleSend = () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !selectedSession || replyingRef.current) return;
     const newMsg: Message = {
       id: `msg-${Date.now()}`,
       senderId: 'me',
@@ -36,32 +95,38 @@ const ChatPage: React.FC = () => {
       isAI: false,
       type: 'text'
     };
-    setMessages([...messages, newMsg]);
+    appendMessage(selectedSession.targetId, newMsg);
+    setLocalMessages((prev) => [...prev, newMsg]);
     setInputText('');
+    replyingRef.current = true;
     setTimeout(() => {
       const replyMsg: Message = {
         id: `msg-${Date.now() + 1}`,
         senderId: selectedSession?.targetId || '',
         senderName: selectedSession?.targetName || '',
         senderAvatar: selectedSession?.targetAvatar || '',
-        content: '收到你的消息啦~ 让我想想怎么回复你呢~',
+        content: pickReply(),
         timestamp: new Date().toLocaleTimeString().slice(0, 5),
         isAI: true,
         type: 'text'
       };
-      setMessages(prev => [...prev, replyMsg]);
-    }, 1000);
+      appendMessage(selectedSession!.targetId, replyMsg);
+      setLocalMessages((prev) => [...prev, replyMsg]);
+      replyingRef.current = false;
+    }, 800 + Math.random() * 1200);
   };
 
   const handleStartNewChat = () => {
-    Taro.navigateTo({ url: '/pages/discover/index' });
+    Taro.switchTab({ url: '/pages/discover/index' });
   };
 
   if (selectedSession) {
     return (
       <View className={styles.chatWindow}>
         <View className={styles.chatHeader}>
-          <Text className={styles.backBtn} onClick={handleBack}>←</Text>
+          <Text className={styles.backBtn} onClick={handleBack}>
+            ←
+          </Text>
           <Image className={styles.chatAvatar} src={selectedSession.targetAvatar} mode='aspectFill' />
           <View className={styles.chatInfo}>
             <Text className={styles.chatName}>{selectedSession.targetName}</Text>
@@ -69,8 +134,12 @@ const ChatPage: React.FC = () => {
           </View>
           <Text className={styles.moreBtn}>⋯</Text>
         </View>
-        <ScrollView className={styles.messagesContainer} scrollY scrollIntoView={`msg-${messages.length - 1}`}>
-          {messages.map((msg, idx) => (
+        <ScrollView
+          className={styles.messagesContainer}
+          scrollY
+          scrollIntoView={`msg-${localMessages.length - 1}`}
+        >
+          {localMessages.map((msg, idx) => (
             <View key={msg.id} id={`msg-${idx}`}>
               <ChatBubble message={msg} />
             </View>
@@ -126,14 +195,14 @@ const ChatPage: React.FC = () => {
 
       {activeTab === 'chats' && (
         <View className={styles.chatList}>
-          {mockChatSessions.map((session) => (
+          {chatSessions.map((session) => (
             <MessageItem
               key={session.id}
               session={session}
               onClick={() => handleSessionClick(session)}
             />
           ))}
-          {mockChatSessions.length === 0 && (
+          {chatSessions.length === 0 && (
             <View className={styles.empty}>
               <Text className={styles.emptyIcon}>💬</Text>
               <Text className={styles.emptyText}>还没有聊天记录，快去发现页找个AI聊天吧</Text>
@@ -146,18 +215,20 @@ const ChatPage: React.FC = () => {
         <ScrollView className={styles.collectTab} scrollY>
           <View className={styles.collectSection}>
             <Text className={styles.sectionTitle}>⭐ 我的收藏</Text>
-            {(collectedMessages.length > 0 ? collectedMessages : mockCollectedMessages).map((msg) => (
-              <View key={msg.id} className={styles.collectCard}>
-                <View className={styles.collectMeta}>
-                  <Image className={styles.collectAvatar} src={msg.senderAvatar} mode='aspectFill' />
-                  <Text className={styles.collectName}>{msg.senderName}</Text>
-                  <Text className={styles.collectTime}>{msg.timestamp}</Text>
+            {(collectedMessages.length > 0 ? collectedMessages : mockCollectedMessages).map(
+              (msg) => (
+                <View key={msg.id} className={styles.collectCard}>
+                  <View className={styles.collectMeta}>
+                    <Image className={styles.collectAvatar} src={msg.senderAvatar} mode='aspectFill' />
+                    <Text className={styles.collectName}>{msg.senderName}</Text>
+                    <Text className={styles.collectTime}>{msg.timestamp}</Text>
+                  </View>
+                  <View className={styles.collectContent}>
+                    <Text>{msg.content}</Text>
+                  </View>
                 </View>
-                <View className={styles.collectContent}>
-                  <Text>{msg.content}</Text>
-                </View>
-              </View>
-            ))}
+              )
+            )}
           </View>
         </ScrollView>
       )}

@@ -1,21 +1,43 @@
 import React from 'react';
 import { View, Text, Input, ScrollView } from '@tarojs/components';
-import Taro from '@tarojs/taro';
+import Taro, { eventCenter } from '@tarojs/taro';
 import styles from './index.module.scss';
 import CharacterCard from '@/components/CharacterCard';
 import TopicCard from '@/components/TopicCard';
 import RoomCard from '@/components/RoomCard';
 import { mockCharacters } from '@/data/characters';
 import { mockTopics } from '@/data/topics';
-import { mockRooms } from '@/data/rooms';
+import { useAppStore } from '@/store/appStore';
+import { Character, ChatSession } from '@/types';
 
 const DiscoverPage: React.FC = () => {
+  const { rooms, addChatSession, chatSessions } = useAppStore();
+
   const handleCreateRole = () => {
     Taro.navigateTo({ url: '/pages/create/index' });
   };
 
-  const handleCharacterClick = (charId: string) => {
-    Taro.showToast({ title: `进入聊天：角色ID ${charId}`, icon: 'none' });
+  const handleCharacterClick = (char: Character) => {
+    const exists = chatSessions.find((s) => s.targetId === char.id);
+    if (!exists) {
+      const session: ChatSession = {
+        id: `session-${char.id}-${Date.now()}`,
+        targetId: char.id,
+        targetName: char.name,
+        targetAvatar: char.avatar,
+        lastMessage: `你好呀~ 我是${char.name}，很高兴认识你！`,
+        lastTime: '刚刚',
+        unreadCount: 0,
+        isAI: true
+      };
+      addChatSession(session);
+    }
+    eventCenter.trigger('openChatWith', char.id);
+    Taro.switchTab({ url: '/pages/chat/index' });
+  };
+
+  const handleTopicUse = (title: string) => {
+    Taro.showToast({ title: `使用话题：${title}`, icon: 'none' });
   };
 
   return (
@@ -52,7 +74,7 @@ const DiscoverPage: React.FC = () => {
               <CharacterCard
                 key={char.id}
                 character={char}
-                onClick={() => handleCharacterClick(char.id)}
+                onClick={() => handleCharacterClick(char)}
               />
             ))}
           </View>
@@ -66,10 +88,7 @@ const DiscoverPage: React.FC = () => {
           <ScrollView className={styles.topicsRow} scrollX>
             {mockTopics.map((topic) => (
               <View key={topic.id} className={styles.topicCardWrap}>
-                <TopicCard
-                  topic={topic}
-                  onUse={() => Taro.showToast({ title: `使用话题：${topic.title}`, icon: 'none' })}
-                />
+                <TopicCard topic={topic} onUse={() => handleTopicUse(topic.title)} />
               </View>
             ))}
           </ScrollView>
@@ -81,12 +100,8 @@ const DiscoverPage: React.FC = () => {
             <Text className={styles.moreBtn}>更多房间 →</Text>
           </View>
           <View className={styles.roomsGrid}>
-            {mockRooms.slice(0, 3).map((room) => (
-              <RoomCard
-                key={room.id}
-                room={room}
-                onClick={() => Taro.switchTab({ url: '/pages/room/index' })}
-              />
+            {rooms.slice(0, 3).map((room) => (
+              <RoomCard key={room.id} room={room} onClick={() => Taro.switchTab({ url: '/pages/room/index' })} />
             ))}
           </View>
         </View>

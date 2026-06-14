@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Input, Image } from '@tarojs/components';
+import { View, Text, Input, Image, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import { useAppStore } from '@/store/appStore';
@@ -7,10 +7,18 @@ import { mockCharacters } from '@/data/characters';
 import classnames from 'classnames';
 
 const SettingsPage: React.FC = () => {
-  const { forbiddenWords, addForbiddenWord, removeForbiddenWord, blockedUsers, unblockUser } = useAppStore();
+  const {
+    forbiddenWords,
+    addForbiddenWord,
+    removeForbiddenWord,
+    blockedUsers,
+    unblockUser,
+    reports
+  } = useAppStore();
   const [newWord, setNewWord] = useState('');
   const [notifications, setNotifications] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
+  const [showReportList, setShowReportList] = useState(false);
 
   const handleAddWord = () => {
     if (!newWord.trim()) return;
@@ -40,7 +48,7 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleReportList = () => {
-    Taro.showToast({ title: '查看举报记录', icon: 'none' });
+    setShowReportList(true);
   };
 
   const handleFeedback = () => {
@@ -51,7 +59,52 @@ const SettingsPage: React.FC = () => {
     Taro.showToast({ title: '关于我们 v1.0.0', icon: 'none' });
   };
 
-  const blockedList = mockCharacters.filter(c => blockedUsers.includes(c.id));
+  const blockedList = mockCharacters.filter((c) => blockedUsers.includes(c.id));
+
+  if (showReportList) {
+    return (
+      <View className={styles.page}>
+        <View className={styles.header}>
+          <Text className={styles.backBtn} onClick={() => setShowReportList(false)}>
+            ←
+          </Text>
+          <Text className={styles.title}>
+            <Text className='gradientText'>举报记录</Text>
+          </Text>
+          <Text className={styles.subtitle}>共 {reports.length} 条举报</Text>
+        </View>
+        <ScrollView scrollY>
+          {reports.length === 0 ? (
+            <View className={styles.emptyReport}>
+              <Text className={styles.emptyIcon}>📭</Text>
+              <Text className={styles.emptyText}>暂无举报记录</Text>
+            </View>
+          ) : (
+            reports.map((r) => (
+              <View key={r.id} className={styles.reportItem}>
+                <View className={styles.reportHeader}>
+                  <Image className={styles.reportAvatar} src={r.targetAvatar} mode='aspectFill' />
+                  <View className={styles.reportInfo}>
+                    <Text className={styles.reportName}>{r.targetName}</Text>
+                    <Text className={styles.reportTime}>{r.createdAt}</Text>
+                  </View>
+                  <View className={styles.reasonTag}>
+                    <Text>{r.reason}</Text>
+                  </View>
+                </View>
+                {r.messageContent && (
+                  <View className={styles.reportMsg}>
+                    <Text className={styles.reportMsgLabel}>举报内容：</Text>
+                    <Text className={styles.reportMsgText}>{r.messageContent}</Text>
+                  </View>
+                )}
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View className={styles.page}>
@@ -62,151 +115,162 @@ const SettingsPage: React.FC = () => {
         <Text className={styles.subtitle}>管理你的账户和偏好</Text>
       </View>
 
-      <View className={styles.section}>
-        <Text className={styles.sectionTitle}>通用设置</Text>
+      <ScrollView scrollY>
+        <View className={styles.section}>
+          <Text className={styles.sectionTitle}>通用设置</Text>
 
-        <View className={styles.listItem}>
-          <View className={styles.itemIcon} style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
-            <Text>🔔</Text>
-          </View>
-          <View className={styles.itemContent}>
-            <Text className={styles.itemTitle}>消息通知</Text>
-          </View>
-          <View
-            className={classnames(styles.switch, notifications && styles.active)}
-            onClick={() => setNotifications(!notifications)}
-          >
-            <View className={classnames(styles.switchDot, notifications && styles.active)} />
-          </View>
-        </View>
-
-        <View className={styles.listItem}>
-          <View className={styles.itemIcon} style={{ background: 'rgba(16, 185, 129, 0.1)' }}>
-            <Text>💾</Text>
-          </View>
-          <View className={styles.itemContent}>
-            <Text className={styles.itemTitle}>自动保存对话</Text>
-            <Text className={styles.itemDesc}>自动保存所有聊天记录</Text>
-          </View>
-          <View
-            className={classnames(styles.switch, autoSave && styles.active)}
-            onClick={() => setAutoSave(!autoSave)}
-          >
-            <View className={classnames(styles.switchDot, autoSave && styles.active)} />
-          </View>
-        </View>
-      </View>
-
-      <View className={styles.section}>
-        <Text className={styles.sectionTitle}>🚫 禁词管理</Text>
-        <View className={styles.forbiddenWords}>
-          {forbiddenWords.map((word) => (
-            <View key={word} className={styles.forbiddenTag}>
-              <Text>{word}</Text>
-              <Text className={styles.removeWord} onClick={() => removeForbiddenWord(word)}>✕</Text>
+          <View className={styles.listItem}>
+            <View className={styles.itemIcon} style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
+              <Text>🔔</Text>
             </View>
-          ))}
-        </View>
-        <View className={styles.addWordInput}>
-          <Input
-            className={styles.wordInput}
-            placeholder='添加屏蔽词汇...'
-            value={newWord}
-            onInput={(e) => setNewWord(e.detail.value)}
-            confirmType='done'
-            onConfirm={handleAddWord}
-          />
-          <View className={styles.addWordBtn} onClick={handleAddWord}>
-            <Text>添加</Text>
+            <View className={styles.itemContent}>
+              <Text className={styles.itemTitle}>消息通知</Text>
+            </View>
+            <View
+              className={classnames(styles.switch, notifications && styles.active)}
+              onClick={() => setNotifications(!notifications)}
+            >
+              <View className={classnames(styles.switchDot, notifications && styles.active)} />
+            </View>
           </View>
-        </View>
-      </View>
 
-      <View className={styles.section}>
-        <View className={styles.listItem} onClick={handleInvite}>
-          <View className={styles.itemIcon} style={{ background: 'rgba(124, 58, 237, 0.1)' }}>
-            <Text>👥</Text>
+          <View className={styles.listItem}>
+            <View className={styles.itemIcon} style={{ background: 'rgba(16, 185, 129, 0.1)' }}>
+              <Text>💾</Text>
+            </View>
+            <View className={styles.itemContent}>
+              <Text className={styles.itemTitle}>自动保存对话</Text>
+              <Text className={styles.itemDesc}>自动保存所有聊天记录</Text>
+            </View>
+            <View
+              className={classnames(styles.switch, autoSave && styles.active)}
+              onClick={() => setAutoSave(!autoSave)}
+            >
+              <View className={classnames(styles.switchDot, autoSave && styles.active)} />
+            </View>
           </View>
-          <View className={styles.itemContent}>
-            <Text className={styles.itemTitle}>邀请好友</Text>
-            <Text className={styles.itemDesc}>邀请好友加入AI聊天</Text>
-          </View>
-          <Text className={styles.itemArrow}>›</Text>
-        </View>
-
-        <View className={styles.listItem} onClick={handleExport}>
-          <View className={styles.itemIcon} style={{ background: 'rgba(6, 182, 212, 0.1)' }}>
-            <Text>📤</Text>
-          </View>
-          <View className={styles.itemContent}>
-            <Text className={styles.itemTitle}>数据导出</Text>
-            <Text className={styles.itemDesc}>导出所有聊天记录和收藏</Text>
-          </View>
-          <Text className={styles.itemArrow}>›</Text>
-        </View>
-      </View>
-
-      <View className={styles.section}>
-        <Text className={styles.sectionTitle}>⚠️ 举报与屏蔽</Text>
-        <View className={styles.listItem} onClick={handleReportList}>
-          <View className={styles.itemIcon} style={{ background: 'rgba(245, 158, 11, 0.1)' }}>
-            <Text>📋</Text>
-          </View>
-          <View className={styles.itemContent}>
-            <Text className={styles.itemTitle}>举报记录</Text>
-          </View>
-          <Text className={styles.itemArrow}>›</Text>
         </View>
 
-        {blockedList.length > 0 ? (
-          <View className={styles.blockedList}>
-            {blockedList.map((char) => (
-              <View key={char.id} className={styles.blockedItem}>
-                <Image className={styles.blockedAvatar} src={char.avatar} mode='aspectFill' />
-                <View className={styles.blockedInfo}>
-                  <Text className={styles.blockedName}>{char.name}</Text>
-                  <Text className={styles.blockedTime}>已屏蔽</Text>
-                </View>
-                <View className={styles.unblockBtn} onClick={() => unblockUser(char.id)}>
-                  <Text>解除</Text>
-                </View>
+        <View className={styles.section}>
+          <Text className={styles.sectionTitle}>🚫 禁词管理</Text>
+          <View className={styles.forbiddenWords}>
+            {forbiddenWords.map((word) => (
+              <View key={word} className={styles.forbiddenTag}>
+                <Text>{word}</Text>
+                <Text className={styles.removeWord} onClick={() => removeForbiddenWord(word)}>
+                  ✕
+                </Text>
               </View>
             ))}
+            {forbiddenWords.length === 0 && (
+              <Text className={styles.emptyHint}>暂无屏蔽词</Text>
+            )}
           </View>
-        ) : (
-          <Text className={styles.emptyHint}>暂无屏蔽的用户</Text>
-        )}
-      </View>
-
-      <View className={styles.section}>
-        <View className={styles.listItem} onClick={handleFeedback}>
-          <View className={styles.itemIcon} style={{ background: 'rgba(236, 72, 153, 0.1)' }}>
-            <Text>💬</Text>
+          <View className={styles.addWordInput}>
+            <Input
+              className={styles.wordInput}
+              placeholder='添加屏蔽词汇...'
+              value={newWord}
+              onInput={(e) => setNewWord(e.detail.value)}
+              confirmType='done'
+              onConfirm={handleAddWord}
+            />
+            <View className={styles.addWordBtn} onClick={handleAddWord}>
+              <Text>添加</Text>
+            </View>
           </View>
-          <View className={styles.itemContent}>
-            <Text className={styles.itemTitle}>意见反馈</Text>
-          </View>
-          <Text className={styles.itemArrow}>›</Text>
         </View>
 
-        <View className={styles.listItem} onClick={handleAbout}>
-          <View className={styles.itemIcon} style={{ background: 'rgba(100, 116, 139, 0.1)' }}>
-            <Text>ℹ️</Text>
+        <View className={styles.section}>
+          <View className={styles.listItem} onClick={handleInvite}>
+            <View className={styles.itemIcon} style={{ background: 'rgba(124, 58, 237, 0.1)' }}>
+              <Text>👥</Text>
+            </View>
+            <View className={styles.itemContent}>
+              <Text className={styles.itemTitle}>邀请好友</Text>
+              <Text className={styles.itemDesc}>邀请好友加入AI聊天</Text>
+            </View>
+            <Text className={styles.itemArrow}>›</Text>
           </View>
-          <View className={styles.itemContent}>
-            <Text className={styles.itemTitle}>关于</Text>
-          </View>
-          <Text className={styles.itemValue}>v1.0.0</Text>
-          <Text className={styles.itemArrow}>›</Text>
-        </View>
-      </View>
 
-      <View
-        className={styles.logoutBtn}
-        onClick={() => Taro.showModal({ title: '提示', content: '确定要退出登录吗？' })}
-      >
-        <Text>退出登录</Text>
-      </View>
+          <View className={styles.listItem} onClick={handleExport}>
+            <View className={styles.itemIcon} style={{ background: 'rgba(6, 182, 212, 0.1)' }}>
+              <Text>📤</Text>
+            </View>
+            <View className={styles.itemContent}>
+              <Text className={styles.itemTitle}>数据导出</Text>
+              <Text className={styles.itemDesc}>导出所有聊天记录和收藏</Text>
+            </View>
+            <Text className={styles.itemArrow}>›</Text>
+          </View>
+        </View>
+
+        <View className={styles.section}>
+          <Text className={styles.sectionTitle}>⚠️ 举报与屏蔽</Text>
+          <View className={styles.listItem} onClick={handleReportList}>
+            <View className={styles.itemIcon} style={{ background: 'rgba(245, 158, 11, 0.1)' }}>
+              <Text>📋</Text>
+            </View>
+            <View className={styles.itemContent}>
+              <Text className={styles.itemTitle}>举报记录</Text>
+              <Text className={styles.itemDesc}>
+                {reports.length > 0 ? `共 ${reports.length} 条举报` : '暂无举报'}
+              </Text>
+            </View>
+            <Text className={styles.itemArrow}>›</Text>
+          </View>
+
+          <Text className={styles.subSectionTitle}>已屏蔽用户（{blockedList.length}）</Text>
+          {blockedList.length > 0 ? (
+            <View className={styles.blockedList}>
+              {blockedList.map((char) => (
+                <View key={char.id} className={styles.blockedItem}>
+                  <Image className={styles.blockedAvatar} src={char.avatar} mode='aspectFill' />
+                  <View className={styles.blockedInfo}>
+                    <Text className={styles.blockedName}>{char.name}</Text>
+                    <Text className={styles.blockedTime}>已屏蔽</Text>
+                  </View>
+                  <View className={styles.unblockBtn} onClick={() => unblockUser(char.id)}>
+                    <Text>解除</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text className={styles.emptyHint}>暂无屏蔽的用户</Text>
+          )}
+        </View>
+
+        <View className={styles.section}>
+          <View className={styles.listItem} onClick={handleFeedback}>
+            <View className={styles.itemIcon} style={{ background: 'rgba(236, 72, 153, 0.1)' }}>
+              <Text>💬</Text>
+            </View>
+            <View className={styles.itemContent}>
+              <Text className={styles.itemTitle}>意见反馈</Text>
+            </View>
+            <Text className={styles.itemArrow}>›</Text>
+          </View>
+
+          <View className={styles.listItem} onClick={handleAbout}>
+            <View className={styles.itemIcon} style={{ background: 'rgba(100, 116, 139, 0.1)' }}>
+              <Text>ℹ️</Text>
+            </View>
+            <View className={styles.itemContent}>
+              <Text className={styles.itemTitle}>关于</Text>
+            </View>
+            <Text className={styles.itemValue}>v1.0.0</Text>
+            <Text className={styles.itemArrow}>›</Text>
+          </View>
+        </View>
+
+        <View
+          className={styles.logoutBtn}
+          onClick={() => Taro.showModal({ title: '提示', content: '确定要退出登录吗？' })}
+        >
+          <Text>退出登录</Text>
+        </View>
+      </ScrollView>
     </View>
   );
 };
