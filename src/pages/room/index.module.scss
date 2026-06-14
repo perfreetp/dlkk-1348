@@ -1,0 +1,389 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+}
+
+.header {
+  padding: $spacing-lg $page-padding 0;
+  margin-bottom: $spacing-lg;
+}
+
+.title {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-xs;
+}
+
+.subtitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.searchBar {
+  margin: 0 $page-padding $spacing-lg;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  padding: $spacing-md $spacing-lg;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  box-shadow: $shadow-card;
+}
+
+.searchIcon {
+  font-size: $font-size-lg;
+  color: $color-text-tertiary;
+}
+
+.searchInput {
+  flex: 1;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.filterRow {
+  padding: 0 $page-padding;
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-lg;
+  @include scroll-x-container;
+  overflow-x: auto;
+}
+
+.filterChip {
+  @include scroll-x-item(auto);
+  padding: $spacing-sm $spacing-lg;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  white-space: nowrap;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    color: $color-text-white;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.roomList {
+  padding: 0 $page-padding;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding-bottom: $spacing-xl;
+}
+
+.fab {
+  position: fixed;
+  right: $page-padding;
+  bottom: calc(180rpx + env(safe-area-inset-bottom));
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: $radius-round;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  color: $color-text-white;
+  box-shadow: 0 8rpx 32rpx rgba(124, 58, 237, 0.4);
+  z-index: 100;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.92);
+  }
+}
+
+.roomDetail {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: $color-bg-page;
+}
+
+.roomHeader {
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  padding: $spacing-xl $page-padding;
+  padding-top: calc($spacing-xl + env(safe-area-inset-top));
+  color: $color-text-white;
+  position: relative;
+}
+
+.backBtn {
+  position: absolute;
+  left: $page-padding;
+  top: calc($spacing-lg + env(safe-area-inset-top));
+  font-size: $font-size-xl;
+  color: $color-text-white;
+}
+
+.roomTitle {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-xs;
+}
+
+.roomDesc {
+  font-size: $font-size-sm;
+  opacity: 0.9;
+  margin-bottom: $spacing-md;
+}
+
+.roomStats {
+  display: flex;
+  gap: $spacing-lg;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: $font-size-sm;
+}
+
+.participantsBar {
+  padding: $spacing-lg $page-padding;
+  background: $color-bg-card;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.participantsTitle {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-md;
+}
+
+.participantsList {
+  display: flex;
+  gap: $spacing-md;
+  @include scroll-x-container;
+  overflow-x: auto;
+}
+
+.participantItem {
+  @include scroll-x-item(120rpx);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.participantAvatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: $radius-round;
+  border: 4rpx solid $color-bg-hover;
+}
+
+.participantName {
+  font-size: $font-size-xs;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  max-width: 100rpx;
+}
+
+.chatArea {
+  flex: 1;
+  padding: $spacing-lg $page-padding;
+  overflow-y: auto;
+}
+
+.frequencyBar {
+  padding: $spacing-md $page-padding;
+  background: $color-bg-card;
+  border-top: 1rpx solid $color-divider;
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.freqLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  flex-shrink: 0;
+}
+
+.freqOptions {
+  display: flex;
+  flex: 1;
+  gap: $spacing-sm;
+}
+
+.freqBtn {
+  flex: 1;
+  padding: $spacing-sm;
+  border-radius: $radius-md;
+  font-size: $font-size-xs;
+  text-align: center;
+  background: $color-bg-hover;
+  color: $color-text-secondary;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    color: $color-text-white;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.spectatorBar {
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc($spacing-md + env(safe-area-inset-bottom));
+  background: $color-bg-card;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.spectatorInfo {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.spectatorNum {
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.joinBtn {
+  padding: $spacing-sm $spacing-xl;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  color: $color-text-white;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.96);
+    opacity: 0.9;
+  }
+}
+
+.createModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+
+.createContent {
+  width: 100%;
+  background: $color-bg-card;
+  border-radius: $radius-xl $radius-xl 0 0;
+  padding: $spacing-xl $page-padding;
+  padding-bottom: calc($spacing-xl + env(safe-area-inset-bottom));
+}
+
+.createHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-xl;
+}
+
+.createTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.closeBtn {
+  font-size: $font-size-xl;
+  color: $color-text-tertiary;
+  padding: $spacing-sm;
+}
+
+.formGroup {
+  margin-bottom: $spacing-xl;
+}
+
+.formLabel {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: block;
+}
+
+.formInput {
+  width: 100%;
+  background: $color-bg-hover;
+  border-radius: $radius-md;
+  padding: $spacing-md $spacing-lg;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  box-sizing: border-box;
+}
+
+.formTextarea {
+  width: 100%;
+  background: $color-bg-hover;
+  border-radius: $radius-md;
+  padding: $spacing-md $spacing-lg;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  min-height: 160rpx;
+  box-sizing: border-box;
+}
+
+.freqSelect {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.freqOption {
+  flex: 1;
+  padding: $spacing-md;
+  border-radius: $radius-md;
+  background: $color-bg-hover;
+  text-align: center;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-tag-ai;
+    border: 2rpx solid $color-primary;
+  }
+}
+
+.freqOptionName {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.freqOptionDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.submitBtn {
+  width: 100%;
+  height: $button-height-lg;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  color: $color-text-white;
+  border-radius: $radius-button;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}

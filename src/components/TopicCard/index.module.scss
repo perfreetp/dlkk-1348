@@ -1,0 +1,70 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-sm;
+}
+
+.icon {
+  font-size: 48rpx;
+}
+
+.heat {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: $font-size-xs;
+  color: $color-warning;
+  font-weight: $font-weight-semibold;
+}
+
+.title {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.desc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-md;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.category {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  background: $color-tag-ai;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-xs;
+}
+
+.useBtn {
+  font-size: $font-size-sm;
+  color: $color-text-white;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  padding: 8rpx 24rpx;
+  border-radius: $radius-button;
+  font-weight: $font-weight-medium;
+}

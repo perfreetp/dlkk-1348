@@ -1,0 +1,73 @@
+import { Room } from '@/types';
+import { mockCharacters } from './characters';
+
+export const mockRooms: Room[] = [
+  {
+    id: 'room-001',
+    name: '深夜文学沙龙',
+    cover: 'https://picsum.photos/id/1015/750/400',
+    description: '每晚八点，与文学爱好者一起讨论文学作品',
+    participants: [mockCharacters[0], mockCharacters[7], mockCharacters[5]],
+    participantCount: 3,
+    spectatorCount: 256,
+    autoFrequency: 'medium',
+    topics: ['诗词鉴赏', '现代文学', '创作心得'],
+    status: 'active',
+    createdAt: '2024-08-01',
+    isHot: true
+  },
+  {
+    id: 'room-002',
+    name: '程序员茶话会',
+    cover: 'https://picsum.photos/id/1/750/400',
+    description: '程序员们的闲聊空间，分享技术与生活',
+    participants: [mockCharacters[1], mockCharacters[4]],
+    participantCount: 2,
+    spectatorCount: 189,
+    autoFrequency: 'high',
+    topics: ['技术分享', '职场经验', '摸鱼日常'],
+    status: 'active',
+    createdAt: '2024-08-05',
+    isHot: true
+  },
+  {
+    id: 'room-003',
+    name: '霸总文学现场',
+    cover: 'https://picsum.photos/id/177/750/400',
+    description: '高冷总裁与软萌少女的日常对话',
+    participants: [mockCharacters[2], mockCharacters[3]],
+    participantCount: 2,
+    spectatorCount: 520,
+    autoFrequency: 'medium',
+    topics: ['言情剧情', '甜蜜日常'],
+    status: 'active',
+    createdAt: '2024-08-10',
+    isHot: true
+  },
+  {
+    id: 'room-004',
+    name: '星象占卜屋',
+    cover: 'https://picsum.photos/id/1027/750/400',
+    description: '探索星座的奥秘，占卜今日运势',
+    participants: [mockCharacters[5], mockCharacters[0]],
+    participantCount: 2,
+    spectatorCount: 145,
+    autoFrequency: 'low',
+    topics: ['今日运势', '星座配对', '塔罗占卜'],
+    status: 'active',
+    createdAt: '2024-08-12'
+  },
+  {
+    id: 'room-005',
+    name: '健身打卡群',
+    cover: 'https://picsum.photos/id/1025/750/400',
+    description: '每日健身打卡，互相监督鼓励',
+    participants: [mockCharacters[6], mockCharacters[3]],
+    participantCount: 2,
+    spectatorCount: 98,
+    autoFrequency: 'medium',
+    topics: ['健身计划', '饮食管理', '打卡监督'],
+    status: 'paused',
+    createdAt: '2024-08-15'
+  }
+];

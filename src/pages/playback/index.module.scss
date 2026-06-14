@@ -1,0 +1,249 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+}
+
+.header {
+  padding: $spacing-lg $page-padding;
+  background: $color-bg-card;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.dateTabs {
+  display: flex;
+  gap: $spacing-sm;
+  @include scroll-x-container;
+  overflow-x: auto;
+  padding: 0 $page-padding $spacing-md;
+  background: $color-bg-card;
+}
+
+.dateTab {
+  @include scroll-x-item(auto);
+  padding: $spacing-sm $spacing-lg;
+  background: $color-bg-hover;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  white-space: nowrap;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    color: $color-text-white;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.sessionList {
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+}
+
+.sessionCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+}
+
+.sessionHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.sessionAvatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-round;
+}
+
+.sessionInfo {
+  flex: 1;
+}
+
+.sessionName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: 4rpx;
+}
+
+.sessionMeta {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.sessionActions {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.actionBtn {
+  padding: $spacing-xs $spacing-md;
+  border-radius: $radius-md;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+
+  &.primary {
+    background: $color-tag-ai;
+    color: $color-primary;
+  }
+
+  &.secondary {
+    background: $color-bg-hover;
+    color: $color-text-secondary;
+  }
+}
+
+.preview {
+  padding: $spacing-md $spacing-lg;
+  background: $color-bg-hover;
+  margin: $spacing-md $spacing-lg;
+  border-radius: $radius-md;
+}
+
+.previewText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: $line-height-normal;
+  @include text-ellipsis-multi(2);
+}
+
+.emptyState {
+  padding: 160rpx $page-padding;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 120rpx;
+  margin-bottom: $spacing-lg;
+}
+
+.emptyTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+}
+
+.emptyDesc {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.detailView {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: $color-bg-page;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-md $page-padding;
+  padding-top: calc($spacing-md + env(safe-area-inset-top));
+  background: $color-bg-card;
+  box-shadow: $shadow-card;
+}
+
+.backBtn {
+  font-size: $font-size-xl;
+  color: $color-text-primary;
+  padding: $spacing-sm;
+}
+
+.detailTitle {
+  flex: 1;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.exportBtn {
+  padding: $spacing-sm $spacing-md;
+  background: $color-tag-ai;
+  color: $color-primary;
+  border-radius: $radius-md;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.messagesArea {
+  flex: 1;
+  padding: $spacing-lg $page-padding;
+  overflow-y: auto;
+}
+
+.dateDivider {
+  text-align: center;
+  margin: $spacing-lg 0;
+}
+
+.dateText {
+  display: inline-block;
+  padding: $spacing-xs $spacing-lg;
+  background: $color-bg-hover;
+  color: $color-text-tertiary;
+  font-size: $font-size-xs;
+  border-radius: $radius-button;
+}
+
+.playbackControls {
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc($spacing-md + env(safe-area-inset-bottom));
+  background: $color-bg-card;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.controlBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-md;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.controlIcon {
+  font-size: 40rpx;
+}
+
+.controlLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.speedBtn {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+  padding: $spacing-xs $spacing-md;
+  background: $color-tag-ai;
+  border-radius: $radius-md;
+}

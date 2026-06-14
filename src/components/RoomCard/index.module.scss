@@ -1,0 +1,130 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.coverWrap {
+  position: relative;
+  width: 100%;
+  height: 240rpx;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+}
+
+.hotBadge {
+  position: absolute;
+  top: $spacing-sm;
+  left: $spacing-sm;
+  background: $color-tag-hot;
+  color: $color-error;
+  font-size: $font-size-xs;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-xs;
+  font-weight: $font-weight-semibold;
+}
+
+.statusBadge {
+  position: absolute;
+  top: $spacing-sm;
+  right: $spacing-sm;
+  font-size: $font-size-xs;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-xs;
+  font-weight: $font-weight-medium;
+
+  &.active {
+    background: rgba(16, 185, 129, 0.1);
+    color: $color-success;
+  }
+
+  &.paused {
+    background: rgba(245, 158, 11, 0.1);
+    color: $color-warning;
+  }
+}
+
+.content {
+  padding: $spacing-lg;
+}
+
+.name {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.desc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-md;
+  @include text-ellipsis-multi(2);
+}
+
+.info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.participants {
+  display: flex;
+}
+
+.avatarStack {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: $radius-round;
+  border: 4rpx solid $color-bg-card;
+  margin-left: -16rpx;
+
+  &:first-child {
+    margin-left: 0;
+  }
+}
+
+.stats {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.statNum {
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.topics {
+  display: flex;
+  gap: $spacing-xs;
+  flex-wrap: wrap;
+}
+
+.topicTag {
+  font-size: $font-size-xs;
+  color: $color-secondary;
+  background: $color-tag-room;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-xs;
+}

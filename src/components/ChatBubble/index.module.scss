@@ -1,0 +1,90 @@
+@use '@/styles/variables.scss' as *;
+
+.wrapper {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-lg;
+
+  &.isSelf {
+    flex-direction: row-reverse;
+  }
+}
+
+.avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: $radius-round;
+  flex-shrink: 0;
+}
+
+.content {
+  max-width: 70%;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+
+  &.isSelf {
+    flex-direction: row-reverse;
+  }
+}
+
+.name {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.time {
+  font-size: $font-size-xs;
+  color: $color-text-disabled;
+}
+
+.bubble {
+  padding: $spacing-md $spacing-lg;
+  border-radius: $radius-lg;
+  font-size: $font-size-md;
+  line-height: $line-height-normal;
+  word-break: break-all;
+
+  &.isSelf {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    color: $color-text-white;
+    border-top-right-radius: 8rpx;
+  }
+
+  &.isOther {
+    background: $color-bg-card;
+    color: $color-text-primary;
+    border-top-left-radius: 8rpx;
+    box-shadow: $shadow-card;
+  }
+
+  &.isCollected {
+    position: relative;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-xs;
+
+  &.isSelf {
+    justify-content: flex-end;
+  }
+}
+
+.actionBtn {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  padding: 4rpx 12rpx;
+
+  &.active {
+    color: $color-warning;
+  }
+}

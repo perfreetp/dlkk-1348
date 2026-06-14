@@ -1,0 +1,240 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.header {
+  padding: $spacing-lg $page-padding 0;
+  margin-bottom: $spacing-lg;
+}
+
+.title {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-xs;
+}
+
+.subtitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.section {
+  margin: 0 $page-padding $spacing-lg;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  box-shadow: $shadow-card;
+}
+
+.sectionTitle {
+  padding: $spacing-lg $spacing-lg $spacing-sm;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-tertiary;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  padding: $spacing-lg;
+  gap: $spacing-md;
+  border-bottom: 1rpx solid $color-divider;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-bg-hover;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.itemIcon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  flex-shrink: 0;
+}
+
+.itemContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemTitle {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.itemDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.itemArrow {
+  color: $color-text-tertiary;
+  font-size: $font-size-md;
+  flex-shrink: 0;
+}
+
+.itemValue {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-right: $spacing-sm;
+}
+
+.switch {
+  width: 96rpx;
+  height: 56rpx;
+  border-radius: $radius-round;
+  background: $color-text-disabled;
+  position: relative;
+  transition: all $transition-base;
+  flex-shrink: 0;
+
+  &.active {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  }
+}
+
+.switchDot {
+  position: absolute;
+  top: 6rpx;
+  left: 6rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: $radius-round;
+  background: $color-text-white;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+  transition: all $transition-base;
+
+  &.active {
+    left: calc(100% - 50rpx);
+  }
+}
+
+.forbiddenWords {
+  padding: $spacing-lg;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.forbiddenTag {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-sm;
+  background: rgba(239, 68, 68, 0.1);
+  color: $color-error;
+  font-size: $font-size-sm;
+  border-radius: $radius-md;
+}
+
+.removeWord {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+  padding: 0 4rpx;
+}
+
+.addWordInput {
+  display: flex;
+  gap: $spacing-sm;
+  padding: 0 $spacing-lg $spacing-lg;
+}
+
+.wordInput {
+  flex: 1;
+  background: $color-bg-hover;
+  border-radius: $radius-md;
+  padding: $spacing-sm $spacing-md;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.addWordBtn {
+  padding: $spacing-sm $spacing-lg;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  color: $color-text-white;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.blockedList {
+  padding: $spacing-sm $spacing-lg;
+}
+
+.blockedItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-md 0;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.blockedAvatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: $radius-round;
+}
+
+.blockedInfo {
+  flex: 1;
+}
+
+.blockedName {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.blockedTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.unblockBtn {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  padding: $spacing-xs $spacing-sm;
+  border: 1rpx solid $color-primary;
+  border-radius: $radius-xs;
+}
+
+.emptyHint {
+  padding: $spacing-xl;
+  text-align: center;
+  color: $color-text-tertiary;
+  font-size: $font-size-sm;
+}
+
+.logoutBtn {
+  margin: $spacing-xl $page-padding;
+  padding: $spacing-lg;
+  background: rgba(239, 68, 68, 0.1);
+  color: $color-error;
+  text-align: center;
+  border-radius: $radius-lg;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  transition: all $transition-base;
+
+  &:active {
+    background: rgba(239, 68, 68, 0.2);
+  }
+}

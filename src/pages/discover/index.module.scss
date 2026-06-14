@@ -1,0 +1,142 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+}
+
+.header {
+  padding: $spacing-lg $page-padding 0;
+  margin-bottom: $spacing-lg;
+}
+
+.title {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-xs;
+}
+
+.subtitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.searchBar {
+  margin: 0 $page-padding $spacing-lg;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  padding: $spacing-md $spacing-lg;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  box-shadow: $shadow-card;
+}
+
+.searchIcon {
+  font-size: $font-size-lg;
+  color: $color-text-tertiary;
+}
+
+.searchInput {
+  flex: 1;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.banner {
+  margin: 0 $page-padding $spacing-xl;
+  background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+  border-radius: $radius-lg;
+  padding: $spacing-xl $spacing-lg;
+  color: $color-text-white;
+  position: relative;
+  overflow: hidden;
+}
+
+.bannerTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-sm;
+}
+
+.bannerDesc {
+  font-size: $font-size-sm;
+  opacity: 0.9;
+  margin-bottom: $spacing-md;
+}
+
+.bannerBtn {
+  display: inline-block;
+  padding: $spacing-sm $spacing-xl;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  backdrop-filter: blur(10rpx);
+}
+
+.bannerDecoration {
+  position: absolute;
+  right: -40rpx;
+  top: -40rpx;
+  width: 200rpx;
+  height: 200rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: $radius-round;
+}
+
+.section {
+  margin-bottom: $spacing-xl;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.moreBtn {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.hotCharacters {
+  padding: 0 $page-padding;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.topicsRow {
+  padding: 0 $page-padding;
+  display: flex;
+  gap: $spacing-md;
+  @include scroll-x-container;
+  overflow-x: auto;
+}
+
+.topicCardWrap {
+  @include scroll-x-item(520rpx);
+  margin-right: $spacing-md;
+
+  &:last-child {
+    margin-right: 0;
+  }
+}
+
+.roomsGrid {
+  padding: 0 $page-padding;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
