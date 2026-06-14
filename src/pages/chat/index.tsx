@@ -4,7 +4,6 @@ import Taro, { eventCenter } from '@tarojs/taro';
 import styles from './index.module.scss';
 import MessageItem from '@/components/MessageItem';
 import ChatBubble from '@/components/ChatBubble';
-import { mockCollectedMessages } from '@/data/messages';
 import { ChatSession, Message } from '@/types';
 import classnames from 'classnames';
 import { useAppStore } from '@/store/appStore';
@@ -24,34 +23,52 @@ const REPLIES: Record<string, string[]> = {
   cute: ['好哒好哒~', '兔兔听到啦！', '你好可爱呀~']
 };
 
+const TONE_MAP: Record<string, string> = {
+  'char-001': 'friendly',
+  'char-002': 'humorous',
+  'char-003': 'cold',
+  'char-004': 'cute',
+  'char-005': 'formal',
+  'char-006': 'friendly',
+  'char-007': 'humorous',
+  'char-008': 'formal'
+};
+
 const ChatPage: React.FC = () => {
   const {
-    chatSessions,
     collectedMessages,
     myCharacter,
     getMessagesForTarget,
     appendMessage,
-    addChatSession
+    getSortedSessions,
+    pinSession,
+    unpinSession,
+    deleteSession,
+    markSessionUnread,
+    clearUnread
   } = useAppStore();
   const [activeTab, setActiveTab] = useState<'chats' | 'collects'>('chats');
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
+  const [actionSheetVisible, setActionSheetVisible] = useState<string | null>(null);
   const replyingRef = useRef(false);
+  const sessions = getSortedSessions();
 
   useEffect(() => {
     const handler = (targetId: string) => {
-      const session = chatSessions.find((s) => s.targetId === targetId);
+      const session = sessions.find((s) => s.targetId === targetId);
       if (session) {
         setSelectedSession(session);
         setLocalMessages(getMessagesForTarget(targetId));
+        clearUnread(targetId);
       }
     };
     eventCenter.on('openChatWith', handler);
     return () => {
       eventCenter.off('openChatWith', handler);
     };
-  }, [chatSessions, getMessagesForTarget]);
+  }, [sessions, getMessagesForTarget, clearUnread]);
 
   useEffect(() => {
     if (selectedSession) {
@@ -60,25 +77,58 @@ const ChatPage: React.FC = () => {
   }, [selectedSession, getMessagesForTarget]);
 
   const handleSessionClick = (session: ChatSession) => {
+    if (actionSheetVisible) {
+      setActionSheetVisible(null);
+      return;
+    }
     setSelectedSession(session);
+    clearUnread(session.targetId);
+  };
+
+  const handleSessionLongPress = (session: ChatSession) => {
+    setActionSheetVisible(session.targetId);
+  };
+
+  const handlePin = (session: ChatSession) => {
+    if (session.isPinned) {
+      unpinSession(session.targetId);
+      Taro.showToast({ title: '已取消置顶', icon: 'none' });
+    } else {
+      pinSession(session.targetId);
+      Taro.showToast({ title: '已置顶', icon: 'success' });
+    }
+    setActionSheetVisible(null);
+  };
+
+  const handleMarkUnread = (session: ChatSession) => {
+    markSessionUnread(session.targetId);
+    Taro.showToast({ title: '已标为未读', icon: 'none' });
+    setActionSheetVisible(null);
+  };
+
+  const handleDelete = (session: ChatSession) => {
+    Taro.showModal({
+      title: '删除会话',
+      content: `确定要删除与"${session.targetName}"的聊天记录吗？`,
+      success: (res) => {
+        if (res.confirm) {
+          deleteSession(session.targetId);
+          if (selectedSession?.targetId === session.targetId) {
+            setSelectedSession(null);
+          }
+          Taro.showToast({ title: '已删除', icon: 'success' });
+        }
+      }
+    });
+    setActionSheetVisible(null);
   };
 
   const handleBack = () => {
     setSelectedSession(null);
   };
 
-  const pickReply = (): string => {
-    const tone =
-      chatSessions.find((s) => selectedSession && s.targetId === selectedSession.targetId)
-        ?.targetId === 'char-002'
-        ? 'humorous'
-        : selectedSession?.targetId === 'char-003'
-        ? 'cold'
-        : selectedSession?.targetId === 'char-004'
-        ? 'cute'
-        : selectedSession?.targetId === 'char-005'
-        ? 'formal'
-        : 'default';
+  const pickReply = (targetId: string): string => {
+    const tone = TONE_MAP[targetId] || 'default';
     const pool = REPLIES[tone] || REPLIES.default;
     return pool[Math.floor(Math.random() * pool.length)];
   };
@@ -105,7 +155,7 @@ const ChatPage: React.FC = () => {
         senderId: selectedSession?.targetId || '',
         senderName: selectedSession?.targetName || '',
         senderAvatar: selectedSession?.targetAvatar || '',
-        content: pickReply(),
+        content: pickReply(selectedSession!.targetId),
         timestamp: new Date().toLocaleTimeString().slice(0, 5),
         isAI: true,
         type: 'text'
@@ -189,20 +239,61 @@ const ChatPage: React.FC = () => {
           className={classnames(styles.tab, activeTab === 'collects' && styles.active)}
           onClick={() => setActiveTab('collects')}
         >
-          消息收藏 ({collectedMessages.length || mockCollectedMessages.length})
+          消息收藏 ({collectedMessages.length})
         </Text>
       </View>
 
       {activeTab === 'chats' && (
         <View className={styles.chatList}>
-          {chatSessions.map((session) => (
-            <MessageItem
+          {sessions.map((session) => (
+            <View
               key={session.id}
-              session={session}
-              onClick={() => handleSessionClick(session)}
-            />
+              className={classnames(styles.sessionWrap, session.isPinned && styles.pinned)}
+            >
+              <MessageItem
+                session={session}
+                onClick={() => handleSessionClick(session)}
+              />
+              <View
+                className={styles.longPressTrigger}
+                onLongPress={() => handleSessionLongPress(session)}
+              />
+              {actionSheetVisible === session.targetId && (
+                <View
+                  className={styles.actionSheetMask}
+                  onClick={() => setActionSheetVisible(null)}
+                >
+                  <View className={styles.actionSheet} onClick={(e) => e.stopPropagation()}>
+                    <View
+                      className={styles.actionItem}
+                      onClick={() => handlePin(session)}
+                    >
+                      <Text>{session.isPinned ? '📌 取消置顶' : '📌 置顶会话'}</Text>
+                    </View>
+                    <View
+                      className={styles.actionItem}
+                      onClick={() => handleMarkUnread(session)}
+                    >
+                      <Text>🔴 标为未读</Text>
+                    </View>
+                    <View
+                      className={classnames(styles.actionItem, styles.danger)}
+                      onClick={() => handleDelete(session)}
+                    >
+                      <Text>🗑️ 删除会话</Text>
+                    </View>
+                    <View
+                      className={classnames(styles.actionItem, styles.cancel)}
+                      onClick={() => setActionSheetVisible(null)}
+                    >
+                      <Text>取消</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
           ))}
-          {chatSessions.length === 0 && (
+          {sessions.length === 0 && (
             <View className={styles.empty}>
               <Text className={styles.emptyIcon}>💬</Text>
               <Text className={styles.emptyText}>还没有聊天记录，快去发现页找个AI聊天吧</Text>
@@ -215,8 +306,14 @@ const ChatPage: React.FC = () => {
         <ScrollView className={styles.collectTab} scrollY>
           <View className={styles.collectSection}>
             <Text className={styles.sectionTitle}>⭐ 我的收藏</Text>
-            {(collectedMessages.length > 0 ? collectedMessages : mockCollectedMessages).map(
-              (msg) => (
+            {collectedMessages.length === 0 ? (
+              <View className={styles.emptyCollect}>
+                <Text className={styles.emptyIcon}>⭐</Text>
+                <Text className={styles.emptyText}>还没有收藏的消息</Text>
+                <Text className={styles.emptyHint}>在聊天里长按气泡即可收藏</Text>
+              </View>
+            ) : (
+              collectedMessages.map((msg) => (
                 <View key={msg.id} className={styles.collectCard}>
                   <View className={styles.collectMeta}>
                     <Image className={styles.collectAvatar} src={msg.senderAvatar} mode='aspectFill' />
@@ -227,7 +324,7 @@ const ChatPage: React.FC = () => {
                     <Text>{msg.content}</Text>
                   </View>
                 </View>
-              )
+              ))
             )}
           </View>
         </ScrollView>

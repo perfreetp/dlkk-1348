@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import ChatBubble from '@/components/ChatBubble';
-import { mockChatSessions, mockMessages, mockCollectedMessages } from '@/data/messages';
-import { ChatSession } from '@/types';
+import { mockMessages } from '@/data/messages';
+import { ChatSession, Message } from '@/types';
 import classnames from 'classnames';
 import { useAppStore } from '@/store/appStore';
 
@@ -13,12 +13,40 @@ const dates = ['今天', '昨天', '08-10', '08-09', '08-08', '更早'];
 const PlaybackPage: React.FC = () => {
   const [activeDate, setActiveDate] = useState('今天');
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
+  const [viewingCollection, setViewingCollection] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playSpeed, setPlaySpeed] = useState(1);
-  const { collectedMessages } = useAppStore();
+  const { collectedMessages, getMessagesForTarget, chatSessions } = useAppStore();
 
   const handlePlaySession = (session: ChatSession) => {
     setSelectedSession(session);
+    setViewingCollection(false);
+  };
+
+  const handleViewCollection = () => {
+    setViewingCollection(true);
+    setSelectedSession(null);
+  };
+
+  const handleBack = () => {
+    setSelectedSession(null);
+    setViewingCollection(false);
+  };
+
+  const getSessionMessages = (targetId: string): Message[] => {
+    const stored = getMessagesForTarget(targetId);
+    if (stored.length > 0) return stored;
+    return mockMessages.map((m) => ({
+      ...m,
+      id: `${m.id}-${targetId}`,
+      senderId: m.isAI ? targetId : 'me',
+      senderName: m.isAI
+        ? chatSessions.find((s) => s.targetId === targetId)?.targetName || ''
+        : '我',
+      senderAvatar: m.isAI
+        ? chatSessions.find((s) => s.targetId === targetId)?.targetAvatar || ''
+        : ''
+    }));
   };
 
   const handleExport = () => {
@@ -62,17 +90,30 @@ const PlaybackPage: React.FC = () => {
     setPlaySpeed(nextSpeed);
   };
 
-  if (selectedSession) {
+  if (selectedSession || viewingCollection) {
+    const isCollection = viewingCollection;
+    const messages = isCollection
+      ? collectedMessages
+      : getSessionMessages(selectedSession!.targetId);
+    const title = isCollection ? '我的收藏' : selectedSession!.targetName;
+    const avatar = isCollection ? '' : selectedSession!.targetAvatar;
+
     return (
       <View className={styles.detailView}>
         <View className={styles.detailHeader}>
-          <Text className={styles.backBtn} onClick={() => setSelectedSession(null)}>←</Text>
-          <Image
-            className={styles.sessionAvatar}
-            src={selectedSession.targetAvatar}
-            mode='aspectFill'
-          />
-          <Text className={styles.detailTitle}>{selectedSession.targetName}</Text>
+          <Text className={styles.backBtn} onClick={handleBack}>←</Text>
+          {isCollection ? (
+            <View className={styles.collectionAvatar}>
+              <Text>⭐</Text>
+            </View>
+          ) : (
+            <Image
+              className={styles.sessionAvatar}
+              src={avatar}
+              mode='aspectFill'
+            />
+          )}
+          <Text className={styles.detailTitle}>{title}</Text>
           <View className={styles.exportBtn} onClick={handleExport}>
             <Text>📤 导出</Text>
           </View>
@@ -80,14 +121,21 @@ const PlaybackPage: React.FC = () => {
 
         <ScrollView className={styles.messagesArea} scrollY>
           <View className={styles.dateDivider}>
-            <Text className={styles.dateText}>今天</Text>
+            <Text className={styles.dateText}>{isCollection ? `共 ${messages.length} 条收藏` : '今天'}</Text>
           </View>
-          {mockMessages.map((msg) => (
-            <ChatBubble key={msg.id} message={msg} />
-          ))}
-          <View className={styles.dateDivider}>
-            <Text className={styles.dateText}>—— 共 {mockMessages.length} 条消息 ——</Text>
-          </View>
+          {messages.length === 0 ? (
+            <View className={styles.emptyMsgs}>
+              <Text className={styles.emptyMsgsIcon}>💭</Text>
+              <Text className={styles.emptyMsgsText}>还没有收藏的消息</Text>
+            </View>
+          ) : (
+            messages.map((msg) => <ChatBubble key={msg.id} message={msg} />)
+          )}
+          {!isCollection && (
+            <View className={styles.dateDivider}>
+              <Text className={styles.dateText}>—— 共 {messages.length} 条消息 ——</Text>
+            </View>
+          )}
         </ScrollView>
 
         <View className={styles.playbackControls}>
@@ -141,7 +189,7 @@ const PlaybackPage: React.FC = () => {
 
       {activeDate === '今天' ? (
         <ScrollView className={styles.sessionList} scrollY>
-          {mockChatSessions.map((session, idx) => (
+          {chatSessions.map((session, idx) => (
             <View key={session.id} className={styles.sessionCard}>
               <View className={styles.sessionHeader}>
                 <Image
@@ -154,7 +202,7 @@ const PlaybackPage: React.FC = () => {
                   <View className={styles.sessionMeta}>
                     <Text>{session.lastTime}</Text>
                     <Text>·</Text>
-                    <Text>{mockMessages.length} 条消息</Text>
+                    <Text>{getSessionMessages(session.targetId).length} 条消息</Text>
                   </View>
                 </View>
                 <View className={styles.sessionActions}>
@@ -178,37 +226,40 @@ const PlaybackPage: React.FC = () => {
             </View>
           ))}
 
-          {collectedMessages.length > 0 && (
-            <View className={styles.sessionCard}>
-              <View className={styles.sessionHeader}>
-                <View
-                  style={{
-                    width: '80rpx',
-                    height: '80rpx',
-                    borderRadius: '999rpx',
-                    background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '40rpx'
-                  }}
-                >
-                  <Text>⭐</Text>
-                </View>
-                <View className={styles.sessionInfo}>
-                  <Text className={styles.sessionName}>我的收藏</Text>
-                  <View className={styles.sessionMeta}>
-                    <Text>共 {collectedMessages.length || mockCollectedMessages.length} 条收藏</Text>
-                  </View>
+          <View className={styles.sessionCard} onClick={handleViewCollection}>
+            <View className={styles.sessionHeader}>
+              <View
+                style={{
+                  width: '80rpx',
+                  height: '80rpx',
+                  borderRadius: '999rpx',
+                  background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '40rpx'
+                }}
+              >
+                <Text>⭐</Text>
+              </View>
+              <View className={styles.sessionInfo}>
+                <Text className={styles.sessionName}>我的收藏</Text>
+                <View className={styles.sessionMeta}>
+                  <Text>共 {collectedMessages.length} 条收藏</Text>
                 </View>
               </View>
-              <View className={styles.preview}>
-                <Text className={styles.previewText}>
-                  {(collectedMessages.length > 0 ? collectedMessages : mockCollectedMessages)[0].content}
-                </Text>
+              <View className={classnames(styles.actionBtn, styles.primary)}>
+                <Text>查看 →</Text>
               </View>
             </View>
-          )}
+            <View className={styles.preview}>
+              <Text className={styles.previewText}>
+                {collectedMessages.length > 0
+                  ? collectedMessages[0].content
+                  : '还没有收藏的消息'}
+              </Text>
+            </View>
+          </View>
         </ScrollView>
       ) : (
         <View className={styles.emptyState}>

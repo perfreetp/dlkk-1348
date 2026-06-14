@@ -11,7 +11,8 @@ import { useAppStore } from '@/store/appStore';
 import { Character, ChatSession } from '@/types';
 
 const DiscoverPage: React.FC = () => {
-  const { rooms, addChatSession, chatSessions } = useAppStore();
+  const { rooms, addChatSession, chatSessions, blockedUsers } = useAppStore();
+  const visibleCharacters = mockCharacters.filter((c) => !blockedUsers.includes(c.id));
 
   const handleCreateRole = () => {
     Taro.navigateTo({ url: '/pages/create/index' });
@@ -70,7 +71,7 @@ const DiscoverPage: React.FC = () => {
             <Text className={styles.moreBtn}>查看更多 →</Text>
           </View>
           <View className={styles.hotCharacters}>
-            {mockCharacters.slice(0, 4).map((char) => (
+            {visibleCharacters.slice(0, 4).map((char) => (
               <CharacterCard
                 key={char.id}
                 character={char}

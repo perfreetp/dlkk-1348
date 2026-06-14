@@ -23,6 +23,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ session, onClick, className }
       </View>
       <View className={styles.content}>
         <View className={styles.top}>
+          {session.isPinned && <Text className={styles.pinIcon}>📌</Text>}
           <Text className={styles.name}>{session.targetName}</Text>
           <Text className={styles.time}>{session.lastTime}</Text>
         </View>

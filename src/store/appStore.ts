@@ -5,7 +5,7 @@ import { mockRooms } from '@/data/rooms';
 import { mockChatSessions, mockMessages, mockCollectedMessages } from '@/data/messages';
 import Taro from '@tarojs/taro';
 
-const STORAGE_KEY = 'ai_chat_app_state_v1';
+const STORAGE_KEY = 'ai_chat_app_state_v2';
 
 interface PersistedState {
   myCharacter: Character;
@@ -40,7 +40,8 @@ const buildInitialMessagesMap = (): Record<string, Message[]> => {
       id: `${m.id}-${s.targetId}`,
       senderId: m.isAI ? s.targetId : 'me',
       senderName: m.isAI ? s.targetName : '我',
-      senderAvatar: m.isAI ? s.targetAvatar : mockMyCharacter.avatar
+      senderAvatar: m.isAI ? s.targetAvatar : mockMyCharacter.avatar,
+      isCollected: m.isCollected
     }));
   });
   return map;
@@ -53,16 +54,24 @@ interface AppState extends PersistedState {
   toggleCollectMessage: (msg: Message) => void;
   addForbiddenWord: (word: string) => void;
   removeForbiddenWord: (word: string) => void;
-  blockUser: (userId: string, userName?: string, userAvatar?: string) => void;
+  blockUser: (userId: string) => void;
   unblockUser: (userId: string) => void;
   addReport: (report: Omit<ReportItem, 'id' | 'createdAt'>) => void;
   setCurrentChatSession: (session: ChatSession | null) => void;
   setCurrentRoom: (room: Room | null) => void;
   addRoom: (room: Room) => void;
+  updateRoomFrequency: (roomId: string, freq: Room['autoFrequency']) => void;
+  toggleRoomStatus: (roomId: string) => void;
+  setRoomCurrentTopic: (roomId: string, topic: string) => void;
   addChatSession: (session: ChatSession) => void;
   appendMessage: (targetId: string, msg: Message) => void;
   getMessagesForTarget: (targetId: string) => Message[];
-  updateRoomFrequency: (roomId: string, freq: Room['autoFrequency']) => void;
+  pinSession: (targetId: string) => void;
+  unpinSession: (targetId: string) => void;
+  deleteSession: (targetId: string) => void;
+  markSessionUnread: (targetId: string) => void;
+  clearUnread: (targetId: string) => void;
+  getSortedSessions: () => ChatSession[];
   persist: () => void;
 }
 
@@ -116,10 +125,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleCollectMessage: (msg) => {
     set((state) => {
       const exists = state.collectedMessages.find((m) => m.id === msg.id);
+      let newCollected: Message[];
       if (exists) {
-        return { collectedMessages: state.collectedMessages.filter((m) => m.id !== msg.id) };
+        newCollected = state.collectedMessages.filter((m) => m.id !== msg.id);
+      } else {
+        newCollected = [...state.collectedMessages, { ...msg, isCollected: true }];
       }
-      return { collectedMessages: [...state.collectedMessages, { ...msg, isCollected: true }] };
+      const newMessagesMap = { ...state.messagesMap };
+      Object.keys(newMessagesMap).forEach((targetId) => {
+        newMessagesMap[targetId] = newMessagesMap[targetId].map((m) =>
+          m.id === msg.id ? { ...m, isCollected: !exists } : m
+        );
+      });
+      return { collectedMessages: newCollected, messagesMap: newMessagesMap };
     });
     get().persist();
   },
@@ -176,28 +194,40 @@ export const useAppStore = create<AppState>((set, get) => ({
     get().persist();
   },
 
+  toggleRoomStatus: (roomId) => {
+    set((state) => ({
+      rooms: state.rooms.map((r) =>
+        r.id === roomId ? { ...r, status: r.status === 'active' ? 'paused' : 'active' } : r
+      )
+    }));
+    get().persist();
+  },
+
+  setRoomCurrentTopic: (roomId, topic) => {
+    set((state) => ({
+      rooms: state.rooms.map((r) => (r.id === roomId ? { ...r, currentTopic: topic } : r))
+    }));
+    get().persist();
+  },
+
   addChatSession: (session) => {
     set((state) => {
       const exists = state.chatSessions.find((s) => s.targetId === session.targetId);
       if (exists) return state;
-      const targetChar = mockCharacters.find((c) => c.id === session.targetId);
-      if (targetChar && !state.messagesMap[session.targetId]) {
-        const hello: Message = {
-          id: `hello-${session.targetId}-${Date.now()}`,
-          senderId: session.targetId,
-          senderName: session.targetName,
-          senderAvatar: session.targetAvatar,
-          content: `你好呀~ 我是${session.targetName}，很高兴认识你！`,
-          timestamp: new Date().toLocaleTimeString().slice(0, 5),
-          isAI: true,
-          type: 'text'
-        };
-        return {
-          chatSessions: [session, ...state.chatSessions],
-          messagesMap: { ...state.messagesMap, [session.targetId]: [hello] }
-        };
-      }
-      return { chatSessions: [session, ...state.chatSessions] };
+      const hello: Message = {
+        id: `hello-${session.targetId}-${Date.now()}`,
+        senderId: session.targetId,
+        senderName: session.targetName,
+        senderAvatar: session.targetAvatar,
+        content: `你好呀~ 我是${session.targetName}，很高兴认识你！`,
+        timestamp: new Date().toLocaleTimeString().slice(0, 5),
+        isAI: true,
+        type: 'text'
+      };
+      return {
+        chatSessions: [session, ...state.chatSessions],
+        messagesMap: { ...state.messagesMap, [session.targetId]: [hello] }
+      };
     });
     get().persist();
   },
@@ -220,5 +250,61 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   getMessagesForTarget: (targetId) => {
     return get().messagesMap[targetId] || [];
+  },
+
+  pinSession: (targetId) => {
+    set((state) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.targetId === targetId ? { ...s, isPinned: true } : s
+      )
+    }));
+    get().persist();
+  },
+
+  unpinSession: (targetId) => {
+    set((state) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.targetId === targetId ? { ...s, isPinned: false } : s
+      )
+    }));
+    get().persist();
+  },
+
+  deleteSession: (targetId) => {
+    set((state) => {
+      const newMap = { ...state.messagesMap };
+      delete newMap[targetId];
+      return {
+        chatSessions: state.chatSessions.filter((s) => s.targetId !== targetId),
+        messagesMap: newMap
+      };
+    });
+    get().persist();
+  },
+
+  markSessionUnread: (targetId) => {
+    set((state) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.targetId === targetId ? { ...s, unreadCount: s.unreadCount + 1 } : s
+      )
+    }));
+    get().persist();
+  },
+
+  clearUnread: (targetId) => {
+    set((state) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        s.targetId === targetId ? { ...s, unreadCount: 0 } : s
+      )
+    }));
+    get().persist();
+  },
+
+  getSortedSessions: () => {
+    const { chatSessions, blockedUsers } = get();
+    const visible = chatSessions.filter((s) => !blockedUsers.includes(s.targetId));
+    const pinned = visible.filter((s) => s.isPinned);
+    const others = visible.filter((s) => !s.isPinned);
+    return [...pinned, ...others];
   }
 }));

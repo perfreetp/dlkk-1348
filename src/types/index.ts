@@ -34,6 +34,7 @@ export interface ChatSession {
   lastTime: string;
   unreadCount: number;
   isAI: boolean;
+  isPinned?: boolean;
 }
 
 export interface Room {
@@ -46,9 +47,11 @@ export interface Room {
   spectatorCount: number;
   autoFrequency: 'low' | 'medium' | 'high';
   topics: string[];
+  currentTopic?: string;
   status: 'active' | 'paused';
   createdAt: string;
   isHot?: boolean;
+  isOwner?: boolean;
 }
 
 export interface Topic {

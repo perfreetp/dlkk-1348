@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, Input, Image, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import { useAppStore } from '@/store/appStore';
 import { mockCharacters } from '@/data/characters';
 import classnames from 'classnames';
+import { ReportItem } from '@/types';
+
+const TIME_FILTERS = [
+  { label: '全部', value: 'all' },
+  { label: '今天', value: 'today' },
+  { label: '本周', value: 'week' },
+  { label: '本月', value: 'month' }
+];
 
 const SettingsPage: React.FC = () => {
   const {
@@ -19,6 +27,39 @@ const SettingsPage: React.FC = () => {
   const [notifications, setNotifications] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
   const [showReportList, setShowReportList] = useState(false);
+  const [filterCharacter, setFilterCharacter] = useState<string>('all');
+  const [filterTime, setFilterTime] = useState<string>('all');
+
+  const reportedCharacters = useMemo(() => {
+    const ids = new Set(reports.map((r) => r.targetId));
+    return mockCharacters.filter((c) => ids.has(c.id));
+  }, [reports]);
+
+  const filteredReports = useMemo(() => {
+    let list = reports;
+    if (filterCharacter !== 'all') {
+      list = list.filter((r) => r.targetId === filterCharacter);
+    }
+    if (filterTime !== 'all') {
+      const now = new Date();
+      list = list.filter((r) => {
+        const rDate = new Date(r.createdAt);
+        if (filterTime === 'today') {
+          return rDate.toDateString() === now.toDateString();
+        }
+        if (filterTime === 'week') {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return rDate >= weekAgo;
+        }
+        if (filterTime === 'month') {
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          return rDate >= monthAgo;
+        }
+        return true;
+      });
+    }
+    return list;
+  }, [reports, filterCharacter, filterTime]);
 
   const handleAddWord = () => {
     if (!newWord.trim()) return;
@@ -49,6 +90,8 @@ const SettingsPage: React.FC = () => {
 
   const handleReportList = () => {
     setShowReportList(true);
+    setFilterCharacter('all');
+    setFilterTime('all');
   };
 
   const handleFeedback = () => {
@@ -71,16 +114,58 @@ const SettingsPage: React.FC = () => {
           <Text className={styles.title}>
             <Text className='gradientText'>举报记录</Text>
           </Text>
-          <Text className={styles.subtitle}>共 {reports.length} 条举报</Text>
+          <Text className={styles.subtitle}>
+            共 {reports.length} 条 · 筛选后 {filteredReports.length} 条
+          </Text>
         </View>
-        <ScrollView scrollY>
-          {reports.length === 0 ? (
+
+        <View className={styles.filterBar}>
+          <ScrollView className={styles.filterScroll} scrollX>
+            <View
+              className={classnames(
+                styles.filterChip,
+                filterCharacter === 'all' && styles.active
+              )}
+              onClick={() => setFilterCharacter('all')}
+            >
+              <Text>全部角色</Text>
+            </View>
+            {reportedCharacters.map((c) => (
+              <View
+                key={c.id}
+                className={classnames(
+                  styles.filterChip,
+                  filterCharacter === c.id && styles.active
+                )}
+                onClick={() => setFilterCharacter(c.id)}
+              >
+                <Image className={styles.filterAvatar} src={c.avatar} mode='aspectFill' />
+                <Text>{c.name}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View className={styles.timeFilterBar}>
+          {TIME_FILTERS.map((t) => (
+            <Text
+              key={t.value}
+              className={classnames(styles.timeChip, filterTime === t.value && styles.active)}
+              onClick={() => setFilterTime(t.value)}
+            >
+              {t.label}
+            </Text>
+          ))}
+        </View>
+
+        <ScrollView scrollY className={styles.reportScroll}>
+          {filteredReports.length === 0 ? (
             <View className={styles.emptyReport}>
               <Text className={styles.emptyIcon}>📭</Text>
-              <Text className={styles.emptyText}>暂无举报记录</Text>
+              <Text className={styles.emptyText}>暂无匹配的举报记录</Text>
             </View>
           ) : (
-            reports.map((r) => (
+            filteredReports.map((r: ReportItem) => (
               <View key={r.id} className={styles.reportItem}>
                 <View className={styles.reportHeader}>
                   <Image className={styles.reportAvatar} src={r.targetAvatar} mode='aspectFill' />
@@ -162,9 +247,7 @@ const SettingsPage: React.FC = () => {
                 </Text>
               </View>
             ))}
-            {forbiddenWords.length === 0 && (
-              <Text className={styles.emptyHint}>暂无屏蔽词</Text>
-            )}
+            {forbiddenWords.length === 0 && <Text className={styles.emptyHint}>暂无屏蔽词</Text>}
           </View>
           <View className={styles.addWordInput}>
             <Input

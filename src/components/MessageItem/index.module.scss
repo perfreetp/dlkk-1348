@@ -66,6 +66,12 @@
   max-width: 400rpx;
 }
 
+.pinIcon {
+  font-size: $font-size-sm;
+  margin-right: $spacing-xs;
+  flex-shrink: 0;
+}
+
 .time {
   font-size: $font-size-xs;
   color: $color-text-tertiary;

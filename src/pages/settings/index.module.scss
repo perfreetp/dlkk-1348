@@ -337,3 +337,66 @@
   font-size: $font-size-sm;
   color: $color-text-tertiary;
 }
+
+.filterBar {
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-md;
+}
+
+.filterScroll {
+  white-space: nowrap;
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-sm $spacing-lg;
+  margin-right: $spacing-sm;
+  background: $color-bg-card;
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    color: $color-text-white;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.filterAvatar {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: $radius-round;
+}
+
+.timeFilterBar {
+  display: flex;
+  gap: $spacing-sm;
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-md;
+}
+
+.timeChip {
+  flex: 1;
+  text-align: center;
+  padding: $spacing-sm 0;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  transition: all $transition-base;
+
+  &.active {
+    background: rgba(124, 58, 237, 0.1);
+    color: $color-primary;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.reportScroll {
+  padding: 0 0 $spacing-xxl;
+}
