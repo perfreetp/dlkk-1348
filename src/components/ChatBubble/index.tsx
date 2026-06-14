@@ -9,15 +9,17 @@ import { useAppStore } from '@/store/appStore';
 interface ChatBubbleProps {
   message: Message;
   showName?: boolean;
+  highlight?: boolean;
 }
 
 const REPORT_REASONS = ['垃圾广告', '骚扰谩骂', '色情低俗', '违法违规', '其他原因'];
 
-const ChatBubble: React.FC<ChatBubbleProps> = ({ message, showName = false }) => {
+const ChatBubble: React.FC<ChatBubbleProps> = ({ message, showName = false, highlight = false }) => {
   const [showActions, setShowActions] = useState(false);
   const { toggleCollectMessage, collectedMessages, blockUser, addReport } = useAppStore();
   const isCollected = collectedMessages.some((m) => m.id === message.id);
   const isSelf = !message.isAI;
+  const isHighlighted = highlight || message.isHighlighted;
 
   const handleBubbleClick = () => {
     setShowActions(!showActions);
@@ -74,7 +76,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, showName = false }) =>
   };
 
   return (
-    <View className={classnames(styles.wrapper, isSelf && styles.isSelf)}>
+    <View className={classnames(styles.wrapper, isSelf && styles.isSelf, isHighlighted && styles.highlighted)}>
       <Image className={styles.avatar} src={message.senderAvatar} mode='aspectFill' />
       <View className={styles.content}>
         <View className={classnames(styles.header, isSelf && styles.isSelf)}>

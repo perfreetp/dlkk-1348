@@ -12,9 +12,13 @@ export const mockRooms: Room[] = [
     spectatorCount: 256,
     autoFrequency: 'medium',
     topics: ['诗词鉴赏', '现代文学', '创作心得'],
+    currentTopic: '文学作品漫谈',
     status: 'active',
     createdAt: '2024-08-01',
-    isHot: true
+    isHot: true,
+    isOwner: false,
+    phase: 'discussing',
+    topicDuration: 15
   },
   {
     id: 'room-002',
@@ -26,9 +30,13 @@ export const mockRooms: Room[] = [
     spectatorCount: 189,
     autoFrequency: 'high',
     topics: ['技术分享', '职场经验', '摸鱼日常'],
+    currentTopic: '科技前沿讨论',
     status: 'active',
     createdAt: '2024-08-05',
-    isHot: true
+    isHot: true,
+    isOwner: false,
+    phase: 'voting',
+    topicDuration: 10
   },
   {
     id: 'room-003',
@@ -40,9 +48,12 @@ export const mockRooms: Room[] = [
     spectatorCount: 520,
     autoFrequency: 'medium',
     topics: ['言情剧情', '甜蜜日常'],
+    currentTopic: '人生意义探讨',
     status: 'active',
     createdAt: '2024-08-10',
-    isHot: true
+    isHot: true,
+    isOwner: false,
+    phase: 'discussing'
   },
   {
     id: 'room-004',
@@ -54,8 +65,11 @@ export const mockRooms: Room[] = [
     spectatorCount: 145,
     autoFrequency: 'low',
     topics: ['今日运势', '星座配对', '塔罗占卜'],
+    currentTopic: '日常趣事分享',
     status: 'active',
-    createdAt: '2024-08-12'
+    createdAt: '2024-08-12',
+    isOwner: false,
+    phase: 'discussing'
   },
   {
     id: 'room-005',
@@ -67,7 +81,10 @@ export const mockRooms: Room[] = [
     spectatorCount: 98,
     autoFrequency: 'medium',
     topics: ['健身计划', '饮食管理', '打卡监督'],
+    currentTopic: '美食文化交流',
     status: 'paused',
-    createdAt: '2024-08-15'
+    createdAt: '2024-08-15',
+    isOwner: false,
+    phase: 'discussing'
   }
 ];

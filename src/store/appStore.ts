@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { Character, Message, ChatSession, Room, ReportItem } from '@/types';
-import { mockMyCharacter, mockCharacters } from '@/data/characters';
+import { mockMyCharacter } from '@/data/characters';
 import { mockRooms } from '@/data/rooms';
 import { mockChatSessions, mockMessages, mockCollectedMessages } from '@/data/messages';
 import Taro from '@tarojs/taro';
 
-const STORAGE_KEY = 'ai_chat_app_state_v2';
+const STORAGE_KEY = 'ai_chat_app_state_v3';
 
 interface PersistedState {
   myCharacter: Character;
@@ -15,6 +15,8 @@ interface PersistedState {
   rooms: Room[];
   chatSessions: ChatSession[];
   messagesMap: Record<string, Message[]>;
+  roomMessagesMap: Record<string, Message[]>;
+  roomReadPositions: Record<string, number>;
   reports: ReportItem[];
 }
 
@@ -50,28 +52,51 @@ const buildInitialMessagesMap = (): Record<string, Message[]> => {
 interface AppState extends PersistedState {
   currentChatSession: ChatSession | null;
   currentRoom: Room | null;
+
   setMyCharacter: (char: Character) => void;
+
   toggleCollectMessage: (msg: Message) => void;
+  batchUncollect: (msgIds: string[]) => void;
+
   addForbiddenWord: (word: string) => void;
   removeForbiddenWord: (word: string) => void;
+
   blockUser: (userId: string) => void;
   unblockUser: (userId: string) => void;
+
   addReport: (report: Omit<ReportItem, 'id' | 'createdAt'>) => void;
+
   setCurrentChatSession: (session: ChatSession | null) => void;
   setCurrentRoom: (room: Room | null) => void;
+
   addRoom: (room: Room) => void;
   updateRoomFrequency: (roomId: string, freq: Room['autoFrequency']) => void;
   toggleRoomStatus: (roomId: string) => void;
   setRoomCurrentTopic: (roomId: string, topic: string) => void;
+  setTopicDuration: (roomId: string, minutes: number) => void;
+  startVote: (roomId: string, options: string[]) => void;
+  castVote: (roomId: string, option: string) => void;
+  endVote: (roomId: string) => { winner: string; maxVotes: number };
+  setRoomPhase: (roomId: string, phase: Room['phase']) => void;
+  getRoomMessages: (roomId: string) => Message[];
+  appendRoomMessage: (roomId: string, msg: Message) => void;
+  setRoomReadPosition: (roomId: string, index: number) => void;
+  getRoomReadPosition: (roomId: string) => number;
+
   addChatSession: (session: ChatSession) => void;
   appendMessage: (targetId: string, msg: Message) => void;
   getMessagesForTarget: (targetId: string) => Message[];
+
   pinSession: (targetId: string) => void;
   unpinSession: (targetId: string) => void;
   deleteSession: (targetId: string) => void;
   markSessionUnread: (targetId: string) => void;
   clearUnread: (targetId: string) => void;
+  archiveSessions: (targetIds: string[]) => void;
+  unarchiveSessions: (targetIds: string[]) => void;
   getSortedSessions: () => ChatSession[];
+  getArchivedSessions: () => ChatSession[];
+
   persist: () => void;
 }
 
@@ -83,6 +108,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   rooms: persisted.rooms || mockRooms,
   chatSessions: persisted.chatSessions || mockChatSessions,
   messagesMap: persisted.messagesMap || buildInitialMessagesMap(),
+  roomMessagesMap: persisted.roomMessagesMap || {},
+  roomReadPositions: persisted.roomReadPositions || {},
   reports: persisted.reports || [],
   currentChatSession: null,
   currentRoom: null,
@@ -97,6 +124,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         rooms,
         chatSessions,
         messagesMap,
+        roomMessagesMap,
+        roomReadPositions,
         reports
       } = get();
       Taro.setStorageSync(
@@ -109,6 +138,8 @@ export const useAppStore = create<AppState>((set, get) => ({
           rooms,
           chatSessions,
           messagesMap,
+          roomMessagesMap,
+          roomReadPositions,
           reports
         })
       );
@@ -137,7 +168,42 @@ export const useAppStore = create<AppState>((set, get) => ({
           m.id === msg.id ? { ...m, isCollected: !exists } : m
         );
       });
-      return { collectedMessages: newCollected, messagesMap: newMessagesMap };
+      const newRoomMessagesMap = { ...state.roomMessagesMap };
+      Object.keys(newRoomMessagesMap).forEach((roomId) => {
+        newRoomMessagesMap[roomId] = newRoomMessagesMap[roomId].map((m) =>
+          m.id === msg.id ? { ...m, isCollected: !exists } : m
+        );
+      });
+      return {
+        collectedMessages: newCollected,
+        messagesMap: newMessagesMap,
+        roomMessagesMap: newRoomMessagesMap
+      };
+    });
+    get().persist();
+  },
+
+  batchUncollect: (msgIds) => {
+    set((state) => {
+      const idSet = new Set(msgIds);
+      const newCollected = state.collectedMessages.filter((m) => !idSet.has(m.id));
+      const newMessagesMap = { ...state.messagesMap };
+      Object.keys(newMessagesMap).forEach((targetId) => {
+        newMessagesMap[targetId] = newMessagesMap[targetId].map((m) =>
+          idSet.has(m.id) ? { ...m, isCollected: false } : m
+        );
+      });
+      const newRoomMessagesMap = { ...state.roomMessagesMap };
+      Object.keys(newRoomMessagesMap).forEach((roomId) => {
+        newRoomMessagesMap[roomId] = newRoomMessagesMap[roomId].map((m) =>
+          idSet.has(m.id) ? { ...m, isCollected: false } : m
+        );
+      });
+      return {
+        collectedMessages: newCollected,
+        messagesMap: newMessagesMap,
+        roomMessagesMap: newRoomMessagesMap
+      };
     });
     get().persist();
   },
@@ -205,9 +271,118 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setRoomCurrentTopic: (roomId, topic) => {
     set((state) => ({
-      rooms: state.rooms.map((r) => (r.id === roomId ? { ...r, currentTopic: topic } : r))
+      rooms: state.rooms.map((r) =>
+        r.id === roomId ? { ...r, currentTopic: topic, topicStartTime: Date.now() } : r
+      )
     }));
     get().persist();
+  },
+
+  setTopicDuration: (roomId, minutes) => {
+    set((state) => ({
+      rooms: state.rooms.map((r) => (r.id === roomId ? { ...r, topicDuration: minutes } : r))
+    }));
+    get().persist();
+  },
+
+  startVote: (roomId, options) => {
+    const initialResults: Record<string, number> = {};
+    options.forEach((opt) => (initialResults[opt] = 0));
+    set((state) => ({
+      rooms: state.rooms.map((r) =>
+        r.id === roomId
+          ? { ...r, phase: 'voting', voteOptions: options, voteResults: initialResults }
+          : r
+      )
+    }));
+    get().persist();
+  },
+
+  castVote: (roomId, option) => {
+    set((state) => ({
+      rooms: state.rooms.map((r) => {
+        if (r.id !== roomId || !r.voteResults) return r;
+        return {
+          ...r,
+          voteResults: {
+            ...r.voteResults,
+            [option]: (r.voteResults[option] || 0) + 1
+          }
+        };
+      })
+    }));
+  },
+
+  endVote: (roomId) => {
+    let winner = '';
+    let maxVotes = 0;
+    set((state) => {
+      const room = state.rooms.find((r) => r.id === roomId);
+      const results = room?.voteResults || {};
+      const entries = Object.entries(results).sort((a, b) => b[1] - a[1]);
+      winner = entries[0]?.[0] || '';
+      maxVotes = entries[0]?.[1] || 0;
+      const systemMsg: Message = {
+        id: `vote-end-${Date.now()}`,
+        roomId,
+        senderId: 'system',
+        senderName: '系统',
+        senderAvatar: '',
+        content: `投票结束，下一话题：${winner}`,
+        timestamp: new Date().toLocaleTimeString().slice(0, 5),
+        isAI: false,
+        type: 'system'
+      };
+      const newRoomMsgs = [...(state.roomMessagesMap[roomId] || []), systemMsg];
+      return {
+        rooms: state.rooms.map((r) =>
+          r.id === roomId
+            ? {
+                ...r,
+                phase: 'discussing',
+                currentTopic: winner,
+                topicStartTime: Date.now(),
+                voteOptions: undefined,
+                voteResults: undefined
+              }
+            : r
+        ),
+        roomMessagesMap: { ...state.roomMessagesMap, [roomId]: newRoomMsgs }
+      };
+    });
+    get().persist();
+    return { winner, maxVotes };
+  },
+
+  setRoomPhase: (roomId, phase) => {
+    set((state) => ({
+      rooms: state.rooms.map((r) => (r.id === roomId ? { ...r, phase } : r))
+    }));
+    get().persist();
+  },
+
+  getRoomMessages: (roomId) => {
+    return get().roomMessagesMap[roomId] || [];
+  },
+
+  appendRoomMessage: (roomId, msg) => {
+    set((state) => {
+      const existing = state.roomMessagesMap[roomId] || [];
+      return {
+        roomMessagesMap: { ...state.roomMessagesMap, [roomId]: [...existing.slice(-100), msg] }
+      };
+    });
+  },
+
+  setRoomReadPosition: (roomId, index) => {
+    set((state) => ({
+      roomReadPositions: { ...state.roomReadPositions, [roomId]: index }
+    }));
+    get().persist();
+  },
+
+  getRoomReadPosition: (roomId) => {
+    return get().roomReadPositions[roomId] || 0;
   },
 
   addChatSession: (session) => {
@@ -274,9 +449,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => {
       const newMap = { ...state.messagesMap };
       delete newMap[targetId];
+      const newCollected = state.collectedMessages.filter(
+        (m) => state.messagesMap[targetId]?.every((smsg) => smsg.id !== m.id) ?? true
+      );
       return {
         chatSessions: state.chatSessions.filter((s) => s.targetId !== targetId),
-        messagesMap: newMap
+        messagesMap: newMap,
+        collectedMessages: newCollected
       };
     });
     get().persist();
@@ -300,11 +479,40 @@ export const useAppStore = create<AppState>((set, get) => ({
     get().persist();
   },
 
+  archiveSessions: (targetIds) => {
+    const idSet = new Set(targetIds);
+    set((state) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        idSet.has(s.targetId) ? { ...s, isArchived: true, isPinned: false } : s
+      )
+    }));
+    get().persist();
+  },
+
+  unarchiveSessions: (targetIds) => {
+    const idSet = new Set(targetIds);
+    set((state) => ({
+      chatSessions: state.chatSessions.map((s) =>
+        idSet.has(s.targetId) ? { ...s, isArchived: false } : s
+      )
+    }));
+    get().persist();
+  },
+
   getSortedSessions: () => {
     const { chatSessions, blockedUsers } = get();
-    const visible = chatSessions.filter((s) => !blockedUsers.includes(s.targetId));
+    const visible = chatSessions.filter(
+      (s) => !blockedUsers.includes(s.targetId) && !s.isArchived
+    );
     const pinned = visible.filter((s) => s.isPinned);
     const others = visible.filter((s) => !s.isPinned);
     return [...pinned, ...others];
+  },
+
+  getArchivedSessions: () => {
+    const { chatSessions, blockedUsers } = get();
+    return chatSessions.filter(
+      (s) => !blockedUsers.includes(s.targetId) && s.isArchived
+    );
   }
 }));

@@ -19,12 +19,14 @@ const FREQ_INTERVAL: Record<Room['autoFrequency'], number> = {
 
 interface TopicReply {
   topic: string;
+  direction: string;
   replies: Record<string, string[]>;
 }
 
 const TOPIC_REPLIES: TopicReply[] = [
   {
     topic: '人工智能的未来',
+    direction: '技术趋势 · 社会影响',
     replies: {
       default: [
         '我觉得AI未来会在更多领域发挥作用呢~',
@@ -37,6 +39,7 @@ const TOPIC_REPLIES: TopicReply[] = [
   },
   {
     topic: '人生意义探讨',
+    direction: '哲学思辨 · 生活感悟',
     replies: {
       default: [
         '我觉得人生的意义在于体验和成长~',
@@ -49,6 +52,7 @@ const TOPIC_REPLIES: TopicReply[] = [
   },
   {
     topic: '日常趣事分享',
+    direction: '轻松幽默 · 生活点滴',
     replies: {
       default: [
         '哈哈哈今天我遇到一件超好笑的事！',
@@ -61,6 +65,7 @@ const TOPIC_REPLIES: TopicReply[] = [
   },
   {
     topic: '科技前沿讨论',
+    direction: '技术探索 · 创新突破',
     replies: {
       default: [
         '最新的技术发展真的很让人期待啊',
@@ -73,6 +78,7 @@ const TOPIC_REPLIES: TopicReply[] = [
   },
   {
     topic: '美食文化交流',
+    direction: '饮食文化 · 舌尖体验',
     replies: {
       default: [
         '说到美食我就精神了！',
@@ -85,6 +91,7 @@ const TOPIC_REPLIES: TopicReply[] = [
   },
   {
     topic: '文学作品漫谈',
+    direction: '文学鉴赏 · 思想共鸣',
     replies: {
       default: [
         '最近在读一本很有意思的书~',
@@ -106,8 +113,23 @@ const defaultReplies = [
 ];
 
 const RoomPage: React.FC = () => {
-  const { rooms, addRoom, updateRoomFrequency, toggleRoomStatus, setRoomCurrentTopic } =
-    useAppStore();
+  const {
+    rooms,
+    addRoom,
+    updateRoomFrequency,
+    toggleRoomStatus,
+    setRoomCurrentTopic,
+    setTopicDuration,
+    setRoomPhase,
+    startVote,
+    castVote,
+    endVote,
+    getRoomMessages,
+    appendRoomMessage,
+    setRoomReadPosition,
+    getRoomReadPosition
+  } = useAppStore();
+
   const [activeFilter, setActiveFilter] = useState('全部');
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [frequency, setFrequency] = useState<'low' | 'medium' | 'high'>('medium');
@@ -115,6 +137,9 @@ const RoomPage: React.FC = () => {
   const [roomMessages, setRoomMessages] = useState<Message[]>([]);
   const [isSpectator, setIsSpectator] = useState(false);
   const [showTopicPicker, setShowTopicPicker] = useState(false);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [newMsgBadge, setNewMsgBadge] = useState(0);
+  const [countdown, setCountdown] = useState<number>(0);
   const [newRoom, setNewRoom] = useState({
     name: '',
     description: '',
@@ -122,11 +147,22 @@ const RoomPage: React.FC = () => {
     topic: '人工智能的未来'
   });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollRef = useRef<any>(null);
+  const isAtBottomRef = useRef(true);
+  const msgCountRef = useRef(0);
 
   const clearTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+  };
+
+  const clearCountdown = () => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
     }
   };
 
@@ -136,15 +172,59 @@ const RoomPage: React.FC = () => {
     return pool[Math.floor(Math.random() * pool.length)];
   };
 
+  const startCountdown = (durationMin: number) => {
+    setCountdown(durationMin * 60);
+    clearCountdown();
+    countdownRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearCountdown();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const formatCountdown = (sec: number): string => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const getCurrentDirection = (topic?: string): string => {
+    const t = TOPIC_REPLIES.find((x) => x.topic === topic);
+    return t?.direction || '';
+  };
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const atBottom = scrollHeight - scrollTop - clientHeight < 80;
+    isAtBottomRef.current = atBottom;
+    if (atBottom && newMsgBadge > 0) {
+      setNewMsgBadge(0);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setNewMsgBadge(0);
+    }
+  };
+
   useEffect(() => {
     clearTimer();
-    if (selectedRoom && selectedRoom.status === 'active') {
+    if (selectedRoom && selectedRoom.status === 'active' && selectedRoom.phase !== 'voting') {
       const interval = FREQ_INTERVAL[frequency];
       timerRef.current = setInterval(() => {
         const randomChar =
           selectedRoom.participants[
             Math.floor(Math.random() * selectedRoom.participants.length)
           ] || mockCharacters[Math.floor(Math.random() * mockCharacters.length)];
+        const isHighlight = Math.random() < 0.15;
         const newMsg: Message = {
           id: `room-msg-${Date.now()}-${Math.random()}`,
           roomId: selectedRoom.id,
@@ -154,13 +234,37 @@ const RoomPage: React.FC = () => {
           content: getRandomReply(randomChar, selectedRoom.currentTopic),
           timestamp: new Date().toLocaleTimeString().slice(0, 5),
           isAI: true,
-          type: 'text'
+          type: 'text',
+          isHighlighted: isHighlight
         };
-        setRoomMessages((prev) => [...prev.slice(-50), newMsg]);
+        appendRoomMessage(selectedRoom.id, newMsg);
+        setRoomMessages((prev) => {
+          const next = [...prev, newMsg];
+          return next.slice(-100);
+        });
+        if (!isAtBottomRef.current) {
+          setNewMsgBadge((prev) => prev + 1);
+        }
+        if (isHighlight) {
+          const idx = roomMessages.length;
+          setHighlightIndex(idx);
+          setTimeout(() => setHighlightIndex(-1), 3000);
+        }
       }, interval);
     }
     return () => clearTimer();
   }, [selectedRoom, frequency]);
+
+  useEffect(() => {
+    if (selectedRoom && selectedRoom.topicDuration && selectedRoom.phase === 'discussing') {
+      const elapsed = Math.floor((Date.now() - (selectedRoom.topicStartTime || Date.now())) / 1000);
+      const remaining = selectedRoom.topicDuration * 60 - elapsed;
+      if (remaining > 0) {
+        startCountdown(Math.ceil(remaining / 60));
+      }
+    }
+    return () => clearCountdown();
+  }, [selectedRoom?.id, selectedRoom?.phase, selectedRoom?.topicDuration]);
 
   const filteredRooms = rooms.filter((room) => {
     if (activeFilter === '全部') return true;
@@ -172,24 +276,28 @@ const RoomPage: React.FC = () => {
   const handleRoomClick = (room: Room) => {
     setSelectedRoom(room);
     setFrequency(room.autoFrequency);
-    const initMessages: Message[] = Array.from({ length: 6 }).map((_, i) => {
-      const c =
-        room.participants[i % room.participants.length] ||
-        mockCharacters[i % mockCharacters.length];
-      return {
-        id: `init-${room.id}-${i}`,
-        roomId: room.id,
-        senderId: c.id,
-        senderName: c.name,
-        senderAvatar: c.avatar,
-        content: getRandomReply(c, room.currentTopic),
-        timestamp: new Date(Date.now() - (6 - i) * 60000).toLocaleTimeString().slice(0, 5),
-        isAI: true,
-        type: 'text'
-      } as Message;
-    });
+    const stored = getRoomMessages(room.id);
+    const initMessages: Message[] =
+      stored.length > 0
+        ? stored
+        : Array.from({ length: 6 }).map((_, i) => {
+            const c =
+              room.participants[i % room.participants.length] ||
+              mockCharacters[i % mockCharacters.length];
+            return {
+              id: `init-${room.id}-${i}`,
+              roomId: room.id,
+              senderId: c.id,
+              senderName: c.name,
+              senderAvatar: c.avatar,
+              content: getRandomReply(c, room.currentTopic),
+              timestamp: new Date(Date.now() - (6 - i) * 60000).toLocaleTimeString().slice(0, 5),
+              isAI: true,
+              type: 'text'
+            } as Message;
+          });
     if (room.currentTopic) {
-      initMessages.unshift({
+      const topicMsg: Message = {
         id: `topic-${room.id}`,
         roomId: room.id,
         senderId: 'system',
@@ -199,23 +307,50 @@ const RoomPage: React.FC = () => {
         timestamp: '—',
         isAI: false,
         type: 'topic'
-      } as Message);
+      };
+      if (stored.length === 0) {
+        initMessages.unshift(topicMsg);
+      }
     }
     setRoomMessages(initMessages);
+    msgCountRef.current = initMessages.length;
     setIsSpectator(false);
+    setNewMsgBadge(0);
+
+    const savedPos = getRoomReadPosition(room.id);
+    if (savedPos > 0 && savedPos < initMessages.length - 1) {
+      setTimeout(() => {
+        if (scrollRef.current) {
+          const target = initMessages[Math.max(0, savedPos - 2)];
+          if (target) {
+            const el = document.getElementById(`rmsg-${savedPos - 2}`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        }
+      }, 200);
+    }
   };
 
   const handleBack = () => {
+    if (selectedRoom && isSpectator) {
+      setRoomReadPosition(selectedRoom.id, Math.max(0, roomMessages.length - newMsgBadge - 3));
+    }
     clearTimer();
+    clearCountdown();
     setSelectedRoom(null);
     setRoomMessages([]);
     setIsSpectator(false);
     setShowTopicPicker(false);
+    setShowDurationPicker(false);
+    setNewMsgBadge(0);
   };
 
   const handleJoinRoom = () => {
     setIsSpectator(true);
     Taro.showToast({ title: '已加入旁听', icon: 'success' });
+    setTimeout(scrollToBottom, 100);
   };
 
   const handleFrequencyChange = (freq: 'low' | 'medium' | 'high') => {
@@ -240,7 +375,8 @@ const RoomPage: React.FC = () => {
   const handlePickTopic = (topic: string) => {
     if (!selectedRoom) return;
     setRoomCurrentTopic(selectedRoom.id, topic);
-    setSelectedRoom({ ...selectedRoom, currentTopic: topic });
+    const updated = { ...selectedRoom, currentTopic: topic };
+    setSelectedRoom(updated);
     const systemMsg: Message = {
       id: `topic-change-${Date.now()}`,
       roomId: selectedRoom.id,
@@ -253,7 +389,99 @@ const RoomPage: React.FC = () => {
       type: 'topic'
     };
     setRoomMessages((prev) => [...prev, systemMsg]);
+    appendRoomMessage(selectedRoom.id, systemMsg);
     setShowTopicPicker(false);
+    if (selectedRoom.topicDuration) {
+      startCountdown(selectedRoom.topicDuration);
+    }
+  };
+
+  const handleSetDuration = (min: number) => {
+    if (!selectedRoom) return;
+    setTopicDuration(selectedRoom.id, min);
+    setSelectedRoom({ ...selectedRoom, topicDuration: min, topicStartTime: Date.now() });
+    startCountdown(min);
+    setShowDurationPicker(false);
+    Taro.showToast({ title: `话题时长设为 ${min} 分钟`, icon: 'success' });
+  };
+
+  const handleStartVote = () => {
+    if (!selectedRoom) return;
+    const options = TOPIC_REPLIES.filter((t) => t.topic !== selectedRoom.currentTopic)
+      .slice(0, 4)
+      .map((t) => t.topic);
+    startVote(selectedRoom.id, options);
+    const updated = {
+      ...selectedRoom,
+      phase: 'voting' as const,
+      voteOptions: options,
+      voteResults: options.reduce((acc, o) => ({ ...acc, [o]: 0 }), {})
+    };
+    setSelectedRoom(updated);
+    const voteMsg: Message = {
+      id: `vote-start-${Date.now()}`,
+      roomId: selectedRoom.id,
+      senderId: 'system',
+      senderName: '系统',
+      senderAvatar: '',
+      content: '🗳 下一话题投票开始！',
+      timestamp: new Date().toLocaleTimeString().slice(0, 5),
+      isAI: false,
+      type: 'vote'
+    };
+    setRoomMessages((prev) => [...prev, voteMsg]);
+    appendRoomMessage(selectedRoom.id, voteMsg);
+    setRoomPhase(selectedRoom.id, 'voting');
+
+    setTimeout(() => simulateVoting(updated), 800);
+  };
+
+  const simulateVoting = (room: Room) => {
+    if (!room.voteOptions) return;
+    let count = 0;
+    const total = room.participants.length * 2;
+    const voteTimer = setInterval(() => {
+      if (count >= total) {
+        clearInterval(voteTimer);
+        setTimeout(() => handleEndVote(), 500);
+        return;
+      }
+      const option = room.voteOptions![Math.floor(Math.random() * room.voteOptions!.length)];
+      castVote(room.id, option);
+      setSelectedRoom((prev) => {
+        if (!prev) return prev;
+        const results = { ...prev.voteResults };
+        results[option] = (results[option] || 0) + 1;
+        return { ...prev, voteResults: results };
+      });
+      count++;
+    }, 500);
+  };
+
+  const handleEndVote = () => {
+    if (!selectedRoom) return;
+    const { winner, maxVotes } = endVote(selectedRoom.id);
+    if (winner) {
+      const systemMsg: Message = {
+        id: `vote-end-${Date.now()}`,
+        roomId: selectedRoom.id,
+        senderId: 'system',
+        senderName: '系统',
+        senderAvatar: '',
+        content: `🎉 投票结束！「${winner}」以 ${maxVotes} 票胜出，话题切换中...`,
+        timestamp: new Date().toLocaleTimeString().slice(0, 5),
+        isAI: false,
+        type: 'topic'
+      };
+      setRoomMessages((prev) => [...prev, systemMsg]);
+      appendRoomMessage(selectedRoom.id, systemMsg);
+
+      setTimeout(() => {
+        handlePickTopic(winner);
+        setRoomPhase(selectedRoom!.id, 'discussing');
+        setSelectedRoom((prev) => (prev ? { ...prev, phase: 'discussing' } : prev));
+      }, 1200);
+    }
   };
 
   const handleCreateRoom = () => {
@@ -277,7 +505,8 @@ const RoomPage: React.FC = () => {
       status: 'active',
       createdAt: new Date().toISOString().slice(0, 10),
       isHot: false,
-      isOwner: true
+      isOwner: true,
+      phase: 'discussing'
     };
     addRoom(createdRoom);
     Taro.showToast({ title: '房间创建成功', icon: 'success' });
@@ -287,6 +516,9 @@ const RoomPage: React.FC = () => {
   };
 
   if (selectedRoom) {
+    const isVoting = selectedRoom.phase === 'voting';
+    const direction = getCurrentDirection(selectedRoom.currentTopic);
+
     return (
       <View className={styles.roomDetail}>
         <View className={styles.roomHeader}>
@@ -316,6 +548,25 @@ const RoomPage: React.FC = () => {
           )}
         </View>
 
+        <View className={styles.phaseBar}>
+          <View className={styles.phaseInfo}>
+            <View className={classnames(styles.phaseTag, isVoting && styles.voting)}>
+              <Text>{isVoting ? '🗳 投票阶段' : '💬 讨论阶段'}</Text>
+            </View>
+            {!isVoting && countdown > 0 && (
+              <View className={styles.countdown}>
+                <Text className={styles.countdownIcon}>⏱</Text>
+                <Text className={styles.countdownText}>{formatCountdown(countdown)}</Text>
+              </View>
+            )}
+            {direction && !isVoting && (
+              <View className={styles.directionTag}>
+                <Text>🎯 {direction}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
         <View className={styles.participantsBar}>
           <Text className={styles.participantsTitle}>参与角色</Text>
           <ScrollView className={styles.participantsList} scrollX>
@@ -332,18 +583,53 @@ const RoomPage: React.FC = () => {
           <View className={styles.currentTopicBar}>
             <Text className={styles.topicLabel}>💡 当前话题</Text>
             <Text className={styles.topicText}>{selectedRoom.currentTopic}</Text>
-            {selectedRoom.isOwner && (
-              <Text className={styles.changeTopicBtn} onClick={() => setShowTopicPicker(true)}>
-                切换
-              </Text>
+            {selectedRoom.isOwner && !isVoting && (
+              <View className={styles.topicActions}>
+                <Text className={styles.topicAction} onClick={() => setShowDurationPicker(true)}>
+                  ⏱ {selectedRoom.topicDuration ? `${selectedRoom.topicDuration}分` : '时长'}
+                </Text>
+                <Text className={styles.changeTopicBtn} onClick={() => setShowTopicPicker(true)}>
+                  切换
+                </Text>
+              </View>
             )}
+          </View>
+        )}
+
+        {isVoting && selectedRoom.voteOptions && (
+          <View className={styles.votePanel}>
+            <Text className={styles.voteTitle}>🗳 下一话题投票</Text>
+            <View className={styles.voteOptions}>
+              {selectedRoom.voteOptions.map((opt) => {
+                const votes = selectedRoom.voteResults?.[opt] || 0;
+                const total =
+                  Object.values(selectedRoom.voteResults || {}).reduce((a, b) => a + b, 0) || 1;
+                const pct = Math.round((votes / total) * 100);
+                return (
+                  <View key={opt} className={styles.voteOption}>
+                    <View className={styles.voteOptionBar}>
+                      <View
+                        className={styles.voteOptionFill}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </View>
+                    <View className={styles.voteOptionInfo}>
+                      <Text className={styles.voteOptionName}>{opt}</Text>
+                      <Text className={styles.voteOptionCount}>{votes} 票 · {pct}%</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           </View>
         )}
 
         <ScrollView
           className={styles.chatArea}
           scrollY
-          scrollIntoView={`rmsg-${roomMessages.length - 1}`}
+          ref={scrollRef}
+          onScroll={handleScroll}
+          scrollIntoView={isAtBottomRef.current ? `rmsg-${roomMessages.length - 1}` : undefined}
         >
           {selectedRoom.status === 'paused' && (
             <View className={styles.pausedHint}>
@@ -351,17 +637,36 @@ const RoomPage: React.FC = () => {
             </View>
           )}
           {roomMessages.map((msg, idx) => (
-            <View key={msg.id} id={`rmsg-${idx}`}>
+            <View key={msg.id} id={`rmsg-${idx}`} className={styles.msgWrapper}>
               {msg.type === 'topic' ? (
                 <View className={styles.topicMsg}>
                   <Text>{msg.content}</Text>
                 </View>
+              ) : msg.type === 'vote' ? (
+                <View className={styles.voteMsg}>
+                  <Text>{msg.content}</Text>
+                </View>
               ) : (
-                <ChatBubble message={msg} showName={msg.isAI} />
+                <ChatBubble
+                  message={msg}
+                  showName={msg.isAI}
+                  highlight={msg.isHighlighted}
+                />
+              )}
+              {msg.isHighlighted && (
+                <View className={styles.highlightBadge}>
+                  <Text>✨ 关键发言</Text>
+                </View>
               )}
             </View>
           ))}
         </ScrollView>
+
+        {newMsgBadge > 0 && isSpectator && (
+          <View className={styles.newMsgBadge} onClick={scrollToBottom}>
+            <Text>↓ {newMsgBadge} 条新消息</Text>
+          </View>
+        )}
 
         {selectedRoom.isOwner && (
           <View className={styles.ownerBar}>
@@ -379,11 +684,26 @@ const RoomPage: React.FC = () => {
                 ))}
               </View>
             </View>
-            <View
-              className={classnames(styles.statusBtn, selectedRoom.status === 'paused' && styles.resume)}
-              onClick={handleToggleStatus}
-            >
-              <Text>{selectedRoom.status === 'active' ? '⏸ 暂停' : '▶ 恢复'}</Text>
+            <View className={styles.ownerActions}>
+              {!isVoting && (
+                <Text className={styles.ownerActionBtn} onClick={handleStartVote}>
+                  🗳 发起投票
+                </Text>
+              )}
+              {isVoting && (
+                <Text className={styles.ownerActionBtn} onClick={handleEndVote}>
+                  ✅ 结束投票
+                </Text>
+              )}
+              <View
+                className={classnames(
+                  styles.statusBtn,
+                  selectedRoom.status === 'paused' && styles.resume
+                )}
+                onClick={handleToggleStatus}
+              >
+                <Text>{selectedRoom.status === 'active' ? '⏸ 暂停' : '▶ 恢复'}</Text>
+              </View>
             </View>
           </View>
         )}
@@ -396,7 +716,7 @@ const RoomPage: React.FC = () => {
             </Text>{' '}
             人正在旁听
           </Text>
-          <View className={styles.joinBtn} onClick={handleJoinRoom}>
+          <View className={classnames(styles.joinBtn, isSpectator && styles.joined)} onClick={handleJoinRoom}>
             <Text>{isSpectator ? '已旁听' : '加入旁听'}</Text>
           </View>
         </View>
@@ -415,9 +735,33 @@ const RoomPage: React.FC = () => {
                   onClick={() => handlePickTopic(t.topic)}
                 >
                   <Text className={styles.topicOptionText}>{t.topic}</Text>
+                  <Text className={styles.topicOptionDesc}>{t.direction}</Text>
                 </View>
               ))}
               <View className={styles.topicOption} onClick={() => setShowTopicPicker(false)}>
+                <Text className={styles.topicCancel}>取消</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {showDurationPicker && selectedRoom.isOwner && (
+          <View className={styles.topicPickerMask} onClick={() => setShowDurationPicker(false)}>
+            <View className={styles.topicPicker} onClick={(e) => e.stopPropagation()}>
+              <Text className={styles.pickerTitle}>设置话题时长</Text>
+              {[5, 10, 15, 20, 30, 45, 60].map((min) => (
+                <View
+                  key={min}
+                  className={classnames(
+                    styles.topicOption,
+                    selectedRoom.topicDuration === min && styles.active
+                  )}
+                  onClick={() => handleSetDuration(min)}
+                >
+                  <Text className={styles.topicOptionText}>{min} 分钟</Text>
+                </View>
+              ))}
+              <View className={styles.topicOption} onClick={() => setShowDurationPicker(false)}>
                 <Text className={styles.topicCancel}>取消</Text>
               </View>
             </View>
@@ -533,7 +877,11 @@ const RoomPage: React.FC = () => {
                       {freq === 'low' ? '低频' : freq === 'medium' ? '中频' : '高频'}
                     </Text>
                     <Text className={styles.freqOptionDesc}>
-                      {freq === 'low' ? '间隔约8秒' : freq === 'medium' ? '间隔约3.5秒' : '间隔约1秒'}
+                      {freq === 'low'
+                        ? '间隔约8秒'
+                        : freq === 'medium'
+                          ? '间隔约3.5秒'
+                          : '间隔约1秒'}
                     </Text>
                   </View>
                 ))}

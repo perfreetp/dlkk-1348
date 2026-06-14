@@ -74,6 +74,81 @@
   }
 }
 
+.chatListSection {
+  margin-bottom: $spacing-xl;
+}
+
+.subHeader {
+  padding: 0 $page-padding $spacing-sm;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.subTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.count {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  font-weight: $font-weight-regular;
+}
+
+.subActions {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.subAction {
+  font-size: $font-size-sm;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+
+  &.active {
+    color: $color-text-secondary;
+  }
+}
+
+.batchBar {
+  margin: 0 $page-padding $spacing-md;
+  padding: $spacing-md $spacing-lg;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);
+  border-radius: $radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.batchInfo {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+}
+
+.batchActions {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.batchBtn {
+  padding: $spacing-xs $spacing-md;
+  font-size: $font-size-sm;
+  color: $color-primary;
+  background: $color-bg-white;
+  border-radius: $radius-button;
+  font-weight: $font-weight-medium;
+
+  &.danger {
+    color: $color-error;
+  }
+}
+
 .chatList {
   padding: 0 $page-padding;
   background: $color-bg-card;
@@ -217,30 +292,99 @@
   }
 }
 
-.collectTab {
-  padding: 0 $page-padding;
-}
-
 .collectSection {
   margin-bottom: $spacing-xl;
 }
 
-.sectionTitle {
-  font-size: $font-size-lg;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
+.collectFilters {
   margin-bottom: $spacing-md;
-  display: flex;
+  padding: 0 $page-padding;
+}
+
+.charFilter {
+  white-space: nowrap;
+  margin-bottom: $spacing-md;
+
+  :global {
+    display: flex;
+    gap: $spacing-sm;
+  }
+}
+
+.filterPill {
+  display: inline-flex;
   align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  flex-shrink: 0;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    color: $color-text-white;
+  }
+}
+
+.filterAvatar {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-round;
+}
+
+.timeFilters {
+  display: flex;
   gap: $spacing-sm;
 }
 
+.timeChip {
+  padding: $spacing-xs $spacing-md;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  flex: 1;
+  text-align: center;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    color: $color-text-white;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.collectList {
+  padding: 0 $page-padding;
+  min-height: 50vh;
+}
+
 .collectCard {
+  position: relative;
   background: $color-bg-card;
   border-radius: $radius-lg;
   padding: $spacing-lg;
   margin-bottom: $spacing-md;
   box-shadow: $shadow-card;
+  display: flex;
+  gap: $spacing-md;
+  align-items: flex-start;
+
+  &.selectable {
+    &.selected {
+      background: rgba(124, 58, 237, 0.06);
+    }
+  }
+
+  .collectMeta,
+  .collectContent {
+    flex: 1;
+  }
 }
 
 .collectMeta {
@@ -280,10 +424,47 @@
 
 .sessionWrap {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding-left: $spacing-md;
 
   &.pinned {
     background: rgba(124, 58, 237, 0.04);
     border-left: 6rpx solid $color-primary;
+  }
+
+  &.selectable {
+    cursor: pointer;
+
+    &.selected {
+      background: rgba(124, 58, 237, 0.08);
+    }
+  }
+
+  :global .message-item {
+    flex: 1;
+  }
+}
+
+.checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 3rpx solid $color-text-tertiary;
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+  flex-shrink: 0;
+  transition: all $transition-base;
+
+  &.checked {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    border-color: transparent;
+    color: $color-text-white;
   }
 }
 

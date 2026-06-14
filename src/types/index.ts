@@ -22,7 +22,8 @@ export interface Message {
   timestamp: string;
   isAI: boolean;
   isCollected?: boolean;
-  type: 'text' | 'topic' | 'system';
+  isHighlighted?: boolean;
+  type: 'text' | 'topic' | 'system' | 'vote';
 }
 
 export interface ChatSession {
@@ -35,6 +36,7 @@ export interface ChatSession {
   unreadCount: number;
   isAI: boolean;
   isPinned?: boolean;
+  isArchived?: boolean;
 }
 
 export interface Room {
@@ -52,6 +54,12 @@ export interface Room {
   createdAt: string;
   isHot?: boolean;
   isOwner?: boolean;
+  phase?: 'discussing' | 'voting';
+  topicDuration?: number;
+  topicStartTime?: number;
+  voteOptions?: string[];
+  voteResults?: Record<string, number>;
+  readPosition?: number;
 }
 
 export interface Topic {

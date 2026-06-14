@@ -186,6 +186,154 @@
   font-weight: $font-weight-medium;
 }
 
+.headerActions {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.headerAction {
+  font-size: $font-size-sm;
+  color: $color-primary;
+  padding: $spacing-xs $spacing-sm;
+  font-weight: $font-weight-medium;
+
+  &.active {
+    color: $color-text-secondary;
+  }
+}
+
+.collectFilters {
+  padding: $spacing-md $page-padding;
+  background: $color-bg-card;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.charFilter {
+  white-space: nowrap;
+  margin-bottom: $spacing-md;
+
+  :global {
+    display: flex;
+    gap: $spacing-sm;
+  }
+}
+
+.filterPill {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-md;
+  background: $color-bg-hover;
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  flex-shrink: 0;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    color: $color-text-white;
+  }
+}
+
+.filterAvatar {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: $radius-round;
+}
+
+.timeFilters {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.timeChip {
+  padding: $spacing-xs $spacing-md;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  background: $color-bg-hover;
+  border-radius: $radius-button;
+  flex: 1;
+  text-align: center;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    color: $color-text-white;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.batchBar {
+  margin: $spacing-sm $page-padding;
+  padding: $spacing-md $spacing-lg;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);
+  border-radius: $radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.batchInfo {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+}
+
+.batchActions {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.batchBtn {
+  padding: $spacing-xs $spacing-md;
+  font-size: $font-size-sm;
+  color: $color-primary;
+  background: $color-bg-white;
+  border-radius: $radius-button;
+  font-weight: $font-weight-medium;
+
+  &.danger {
+    color: $color-error;
+  }
+}
+
+.selectableMsg {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+  padding: $spacing-sm;
+  border-radius: $radius-lg;
+  transition: all $transition-base;
+
+  &.selected {
+    background: rgba(124, 58, 237, 0.06);
+  }
+}
+
+.checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 3rpx solid $color-text-tertiary;
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+  flex-shrink: 0;
+  margin-top: $spacing-md;
+  transition: all $transition-base;
+
+  &.checked {
+    background: linear-gradient(135deg, $color-gradient-start 0%, $color-gradient-end 100%);
+    border-color: transparent;
+    color: $color-text-white;
+  }
+}
+
 .messagesArea {
   flex: 1;
   padding: $spacing-lg $page-padding;

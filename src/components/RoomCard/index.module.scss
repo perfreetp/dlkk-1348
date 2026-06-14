@@ -56,15 +56,47 @@
   }
 }
 
+.phaseBadge {
+  position: absolute;
+  bottom: $spacing-sm;
+  left: $spacing-sm;
+  font-size: $font-size-xs;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-xs;
+  font-weight: $font-weight-semibold;
+  background: rgba(124, 58, 237, 0.9);
+  color: $color-text-white;
+  backdrop-filter: blur(10px);
+
+  &.voting {
+    background: rgba(6, 182, 212, 0.9);
+  }
+}
+
 .content {
   padding: $spacing-lg;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-xs;
 }
 
 .name {
   font-size: $font-size-lg;
   font-weight: $font-weight-semibold;
   color: $color-text-primary;
-  margin-bottom: $spacing-xs;
+}
+
+.durationTag {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  background: $color-tag-ai;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+  font-weight: $font-weight-medium;
 }
 
 .desc {
@@ -72,6 +104,29 @@
   color: $color-text-secondary;
   margin-bottom: $spacing-md;
   @include text-ellipsis-multi(2);
+}
+
+.currentTopicRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%);
+  border-radius: $radius-md;
+}
+
+.currentTopicLabel {
+  font-size: $font-size-sm;
+  flex-shrink: 0;
+}
+
+.currentTopicText {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  flex: 1;
 }
 
 .info {
